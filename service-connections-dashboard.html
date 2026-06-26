@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Service Connections Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:#F3F4F6;color:#111827;min-height:100vh}
+  .page{padding:20px;max-width:1400px;margin:0 auto}
+
+  /* Header */
+  .header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+  .header-left h1{font-size:22px;font-weight:700;color:#111827}
+  .header-left p{font-size:13px;color:#6B7280;margin-top:2px}
+  .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .header-right .meta{font-size:11px;color:#9CA3AF}
+  .btn-refresh{display:flex;align-items:center;gap:5px;padding:5px 12px;font-size:12px;border:none;background:#E5E7EB;color:#374151;border-radius:6px;cursor:pointer;transition:background .2s}
+  .btn-refresh:hover{background:#D1D5DB}
+  .btn-refresh:disabled{opacity:.5;cursor:not-allowed}
+  .spin{animation:spin .8s linear infinite;display:inline-block;font-size:13px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Date row */
+  .date-row{background:#fff;border-radius:10px;border:1px solid #E5E7EB;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end}
+  .date-row label{font-size:12px;font-weight:500;color:#374151}
+  .date-row input{font-size:12px;padding:5px 8px;border:1px solid #D1D5DB;border-radius:6px;outline:none}
+  .date-row input:focus{border-color:#3B82F6;box-shadow:0 0 0 2px rgba(59,130,246,.2)}
+  .btn-clear-date{font-size:12px;color:#EF4444;background:none;border:none;cursor:pointer;font-weight:500}
+  .btn-clear-date:hover{color:#B91C1C}
+
+  /* Filters */
+  .filters-card{background:#fff;border-radius:10px;border:1px solid #E5E7EB;padding:14px 16px;margin-bottom:18px}
+  .filters-title{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#374151;margin-bottom:10px}
+  .filters-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+  .filter-group label{display:block;font-size:11px;font-weight:500;color:#374151;margin-bottom:3px}
+  .filter-group select{width:100%;border:1px solid #D1D5DB;border-radius:6px;padding:6px 8px;font-size:13px;color:#374151;background:#fff;outline:none;cursor:pointer}
+  .filter-group select:focus{border-color:#3B82F6;box-shadow:0 0 0 2px rgba(59,130,246,.2)}
+  .btn-clear-all{margin-top:10px;padding:5px 12px;font-size:12px;border:none;background:#F3F4F6;color:#374151;border-radius:6px;cursor:pointer;transition:background .2s}
+  .btn-clear-all:hover{background:#E5E7EB}
+
+  /* KPI cards */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+  .kpi-card{background:#fff;border-radius:10px;border:1px solid #E5E7EB;padding:14px 16px;position:relative;transition:box-shadow .2s}
+  .kpi-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
+  .kpi-header{display:flex;justify-content:space-between;align-items:flex-start}
+  .kpi-label{font-size:10px;font-weight:600;color:#6B7280;letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:4px}
+  .kpi-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+  .kpi-value{font-size:28px;font-weight:700;color:#111827;margin:4px 0 2px}
+  .kpi-sub{font-size:11px;color:#9CA3AF}
+  .kpi-breakdown{margin-top:8px;padding-top:8px;border-top:1px solid #F3F4F6}
+  .kpi-breakdown-row{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#4B5563}
+  .kpi-breakdown-row span:last-child{font-weight:600;color:#111827}
+  .kpi-breakdown-total{display:flex;justify-content:space-between;font-size:11px;font-weight:700;padding-top:4px;margin-top:2px;border-top:1px solid #E5E7EB;color:#111827}
+  /* tooltip */
+  .info-btn{background:none;border:none;cursor:help;color:#9CA3AF;font-size:12px;padding:0;line-height:1;position:relative}
+  .tooltip-box{display:none;position:absolute;bottom:calc(100% + 6px);left:0;width:220px;background:#1F2937;color:#F9FAFB;font-size:11px;border-radius:8px;padding:8px 10px;z-index:100;line-height:1.4}
+  .tooltip-box b{color:#F9FAFB;display:block;margin-bottom:2px}
+  .info-btn:hover .tooltip-box{display:block}
+
+  /* Charts */
+  .charts-row{display:grid;gap:16px;margin-bottom:16px}
+  .charts-row.cols-2{grid-template-columns:1fr 1fr}
+  .charts-row.cols-1{grid-template-columns:1fr}
+  .chart-card{background:#fff;border-radius:10px;border:1px solid #E5E7EB;padding:16px}
+  .chart-card h3{font-size:14px;font-weight:600;color:#111827;margin-bottom:12px}
+  .chart-wrap{position:relative;height:300px}
+  .no-data{display:flex;align-items:center;justify-content:center;height:100%;color:#9CA3AF;font-size:13px}
+
+  /* Loading / error */
+  .overlay{position:fixed;inset:0;background:#F3F4F6;display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:12px}
+  .spinner{width:40px;height:40px;border:3px solid #E5E7EB;border-top-color:#3B82F6;border-radius:50%;animation:spin .8s linear infinite}
+  .overlay p{color:#6B7280;font-size:14px}
+  .updating-badge{font-size:11px;color:#6B7280;display:flex;align-items:center;gap:5px}
+  .updating-badge .mini-spin{width:14px;height:14px;border:2px solid #E5E7EB;border-top-color:#3B82F6;border-radius:50%;animation:spin .8s linear infinite}
+
+  @media(max-width:768px){
+    .charts-row.cols-2{grid-template-columns:1fr}
+    .kpi-grid{grid-template-columns:1fr 1fr}
+  }
+  @media(max-width:480px){
+    .kpi-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="overlay" id="overlay">
+  <div class="spinner"></div>
+  <p id="overlay-msg">Loading dashboard data…</p>
+</div>
+
+<div class="page" id="app" style="display:none">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <h1>Service Connections Dashboard</h1>
+      <p>Monitor and analyze service connections across Karnataka</p>
+    </div>
+    <div class="header-right">
+      <div id="updating-badge" class="updating-badge" style="display:none">
+        <div class="mini-spin"></div><span>Updating…</span>
+      </div>
+      <span class="meta" id="last-updated"></span>
+      <span class="meta" id="total-records"></span>
+      <button class="btn-refresh" id="btn-refresh" onclick="handleRefresh()">
+        <span id="refresh-icon">↻</span> Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Date Range -->
+  <div class="date-row">
+    <span>📅</span>
+    <label>From:</label>
+    <input type="date" id="date-from" onchange="applyDateFilter()"/>
+    <label>To:</label>
+    <input type="date" id="date-to" onchange="applyDateFilter()"/>
+    <button class="btn-clear-date" id="btn-clear-date" style="display:none" onclick="clearDateFilter()">Clear</button>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-card">
+    <div class="filters-title">🔽 Filters</div>
+    <div class="filters-grid" id="filters-grid">
+      <!-- Selects injected by JS -->
+    </div>
+    <button class="btn-clear-all" id="btn-clear-all" style="display:none" onclick="clearAllFilters()">Clear All Filters</button>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <!-- Charts row 1 -->
+  <div class="charts-row cols-2">
+    <div class="chart-card">
+      <h3>Connections by Company</h3>
+      <div class="chart-wrap"><canvas id="chart-company"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Top 10 Divisions – Connections &amp; Load</h3>
+      <div class="chart-wrap"><canvas id="chart-divisions"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Charts row 2 -->
+  <div class="charts-row cols-2" style="margin-bottom:16px">
+    <div class="chart-card">
+      <h3>Region Type</h3>
+      <div class="chart-wrap"><canvas id="chart-region"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Plot Area Category Comparison</h3>
+      <div class="chart-wrap"><canvas id="chart-plot"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Charts row 3 -->
+  <div class="charts-row cols-1" style="margin-bottom:16px">
+    <div class="chart-card">
+      <h3>Floors Category Comparison</h3>
+      <div class="chart-wrap" style="height:320px"><canvas id="chart-floors"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Charts row 4 -->
+  <div class="charts-row cols-1" style="margin-bottom:20px">
+    <div class="chart-card">
+      <h3>Connections Over Time (Monthly)</h3>
+      <div class="chart-wrap" style="height:320px"><canvas id="chart-time"></canvas></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* =====================================================
+   CONFIG
+===================================================== */
+const CSV_URL = 'https://raw.githubusercontent.com/abhisheks7500hub/service-connection-api/refs/heads/main/classified.csv';
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const COLORS8 = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6','#F472B6'];
+
+/* =====================================================
+   CACHE
+===================================================== */
+const cache = {
+  get(k){
+    try{const d=localStorage.getItem('sc_'+k);if(!d)return null;const p=JSON.parse(d);return(Date.now()-p.ts<CACHE_TTL)?p.data:null}catch{return null}
+  },
+  set(k,v){try{localStorage.setItem('sc_'+k,JSON.stringify({data:v,ts:Date.now()}))}catch{}},
+  clear(){try{Object.keys(localStorage).filter(k=>k.startsWith('sc_')).forEach(k=>localStorage.removeItem(k))}catch{}}
+};
+
+/* =====================================================
+   STATE
+===================================================== */
+let allData = [];
+let filters = {company:'all',zone:'all',circle:'all',division:'all',subdivision:'all',region:'all',plotAreaCategory:'all',floors:'all',connectionType:'all',dateFrom:'',dateTo:''};
+let charts = {};
+
+/* =====================================================
+   HELPERS
+===================================================== */
+const cleanDiv = n => n ? n.replace(' Division','') : '';
+const floorMap = {GROUND:'Ground Floor',G_PLUS_1:'Ground+1',G_PLUS_2:'Ground+2',G_PLUS_3:'Ground+3',G_PLUS_4:'Ground+4',G_PLUS_5:'Ground+5',G_PLUS_6:'Ground+6',G_PLUS_7:'Ground+7',G_PLUS_8:'Ground+8',G_PLUS_9:'Ground+9',G_PLUS_10:'Ground+10',S_PLUS_1:'Stilt+1',S_PLUS_2:'Stilt+2',S_PLUS_3:'Stilt+3',S_PLUS_4:'Stilt+4',S_PLUS_5:'Stilt+5',S_PLUS_6:'Stilt+6',S_PLUS_7:'Stilt+7',S_PLUS_8:'Stilt+8',S_PLUS_9:'Stilt+9',S_PLUS_10:'Stilt+10'};
+const fmtFloor = n => floorMap[n] || n;
+const fmtMonth = s => {if(!s)return '';const [y,m]=s.split('-');const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return `${mn[parseInt(m)-1]} ${y}`};
+const plotCat = v => {const n=Number(v);if(!n||isNaN(n))return 'Unknown';if(n<1200)return '<1200';if(n<2880)return '1200–2880';if(n<4000)return '2880–4000';return '>4000'};
+const parseChildIds = s => {if(!s||s===''||s==='null'||s==='NULL')return [];return String(s).split('|').map(x=>x.trim()).filter(Boolean)};
+const fmtNum = n => Number(n).toLocaleString();
+const showOverlay = msg => {document.getElementById('overlay-msg').textContent=msg||'Loading…';document.getElementById('overlay').style.display='flex'};
+const hideOverlay = () => {document.getElementById('overlay').style.display='none';document.getElementById('app').style.display='block'};
+const showUpdating = b => {document.getElementById('updating-badge').style.display=b?'flex':'none'};
+const destroyChart = id => {if(charts[id]){charts[id].destroy();delete charts[id]}};
+
+/* =====================================================
+   FETCH & PARSE CSV
+===================================================== */
+async function fetchCSV(){
+  const res = await fetch(CSV_URL,{headers:{'Accept':'text/csv'}});
+  const txt = await res.text();
+  const parsed = Papa.parse(txt,{header:true,skipEmptyLines:true,transformHeader:h=>h.trim()});
+  let rows = (parsed.data||[]).map(row=>{
+    const tempId = row.temporaryAccountId?.trim()||null;
+    const cleanTemp = tempId&&tempId!=='null'&&tempId!=='NULL'?tempId:null;
+    const parentId = row.parentAccountId?.trim()||null;
+    const cleanParent = parentId&&parentId!=='null'&&parentId!=='NULL'?parentId:null;
+    const childIds = parseChildIds(row.childAccountIds);
+    return {
+      subdivision:row.subdivision||'',division:row.division||'',circle:row.circle||'',zone:row.zone||'',company:row.company||'',
+      temporaryAccountId:cleanTemp,parentAccountId:cleanParent,childAccountIds:childIds,
+      connectionType:cleanTemp?'TEMPORARY':'PERMANENT',
+      tempDateOfRegistration:row.tempDateOfRegistration||'',dateOfRegistration:row.dateOfRegistration||'',
+      dateOfService:row.dateOfService||'',plotAreaSqft:Number(row.plotAreaSqft)||0,noOfFloors:row.noOfFloors||'',
+      regionType:row.regionType||'',loadKW:Number(row.loadKW)||0,tariff:row.tariff||'',
+      flag:row.flag||'',predicted_flag:row.predicted_flag||'',
+      hasBuildingId:!!(cleanTemp||cleanParent)
+    };
+  }).filter(r=>r.company&&r.company!=='');
+  // dedupe
+  const seen=new Set();
+  rows=rows.filter(r=>{const k=`${r.temporaryAccountId||'NT'}|${r.parentAccountId||'NP'}|${r.division}|${r.subdivision}|${r.company}`;if(seen.has(k))return false;seen.add(k);return true});
+  return rows;
+}
+
+/* =====================================================
+   COMPUTE STATS
+===================================================== */
+function computeStats(data, filt){
+  // common filters
+  const applyCommon = d => {
+    let f = d;
+    if(filt.company!=='all') f=f.filter(x=>x.company===filt.company);
+    if(filt.zone!=='all') f=f.filter(x=>x.zone===filt.zone);
+    if(filt.circle!=='all') f=f.filter(x=>x.circle===filt.circle);
+    if(filt.division!=='all') f=f.filter(x=>x.division===filt.division);
+    if(filt.subdivision!=='all') f=f.filter(x=>x.subdivision===filt.subdivision);
+    if(filt.region!=='all') f=f.filter(x=>x.regionType===filt.region);
+    if(filt.floors!=='all') f=f.filter(x=>x.noOfFloors===filt.floors);
+    if(filt.connectionType!=='all') f=f.filter(x=>x.connectionType===filt.connectionType);
+    return f;
+  };
+  let fd=applyCommon(data), td=applyCommon(data), pd=applyCommon(data);
+  const df=filt.dateFrom?new Date(filt.dateFrom):null, dt=filt.dateTo?new Date(filt.dateTo):null;
+  if(df||dt){
+    fd=fd.filter(x=>{if(!x.dateOfService)return false;const d=new Date(x.dateOfService);return(!df||d>=df)&&(!dt||d<=dt)});
+    td=td.filter(x=>{if(!x.tempDateOfRegistration)return false;const d=new Date(x.tempDateOfRegistration);return(!df||d>=df)&&(!dt||d<=dt)});
+    pd=pd.filter(x=>{if(!x.dateOfRegistration)return false;const d=new Date(x.dateOfRegistration);return(!df||d>=df)&&(!dt||d<=dt)});
+  }
+  // buildings
+  const buildings=fd.filter(x=>x.hasBuildingId).length;
+  // service connections
+  let tIC=0,pIC=0,cIC=0;
+  fd.forEach(x=>{if(x.temporaryAccountId)tIC++;if(x.parentAccountId)pIC++;cIC+=x.childAccountIds.length});
+  const svcConns=tIC+pIC+cIC;
+  // temp connections
+  const tempIds=new Set();
+  const tmpFlags={};
+  td.forEach(x=>{if(x.temporaryAccountId){tempIds.add(x.temporaryAccountId);const fl=x.predicted_flag?.trim()||'Not Classified';tmpFlags[fl]=(tmpFlags[fl]||0)+1}});
+  const tempCount=tempIds.size;
+  // perm connections
+  let permParent=0,permChild=0;
+  const permFlags={};
+  pd.forEach(x=>{const fl=x.predicted_flag?.trim()||'Not Classified';if(x.parentAccountId){permParent++;permFlags[fl]=(permFlags[fl]||0)+1}x.childAccountIds.forEach(()=>{permChild++;permFlags[fl]=(permFlags[fl]||0)+1})});
+  const permCount=permParent+permChild;
+  const totalLoad=fd.reduce((s,x)=>s+x.loadKW,0);
+  // charts data
+  const byCompany=Object.entries(fd.reduce((a,x)=>{a[x.company]=(a[x.company]||0)+1;return a},{})).map(([k,v])=>({label:k,value:v}));
+  const byRegion=Object.entries(fd.reduce((a,x)=>{a[x.regionType||'Unknown']=(a[x.regionType||'Unknown']||0)+1;return a},{})).map(([k,v])=>({label:k,value:v}));
+  const divMap={};
+  fd.forEach(x=>{if(!divMap[x.division])divMap[x.division]={load:0,cnt:0};divMap[x.division].load+=x.loadKW;divMap[x.division].cnt++});
+  const topDivisions=Object.entries(divMap).map(([k,v])=>({name:cleanDiv(k),load:Math.round(v.load*10)/10,cnt:v.cnt})).sort((a,b)=>b.load-a.load).slice(0,10);
+  const plotMap={};
+  fd.forEach(x=>{const c=plotCat(x.plotAreaSqft);if(!plotMap[c])plotMap[c]={cnt:0,load:0};plotMap[c].cnt++;plotMap[c].load+=x.loadKW});
+  const plotData=Object.entries(plotMap).map(([k,v])=>({label:k,cnt:v.cnt,load:Math.round(v.load*10)/10}));
+  const floorMap2={};
+  fd.forEach(x=>{const f=fmtFloor(x.noOfFloors);if(!floorMap2[f])floorMap2[f]={cnt:0,load:0};floorMap2[f].cnt++;floorMap2[f].load+=x.loadKW});
+  const floorData=Object.entries(floorMap2).map(([k,v])=>({label:k,cnt:v.cnt,load:Math.round(v.load*10)/10}));
+  const timeMap={};
+  fd.forEach(x=>{if(!x.dateOfService)return;const d=new Date(x.dateOfService);const my=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;timeMap[my]=(timeMap[my]||0)+1});
+  const timeData=Object.entries(timeMap).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>({label:fmtMonth(k),value:v}));
+  return {buildings,svcConns,totalLoad,avgLoad:fd.length?totalLoad/fd.length:0,tempCount,permCount,tIC,pIC,cIC,permParent,permChild,tmpFlags,permFlags,byCompany,byRegion,topDivisions,plotData,floorData,timeData,total:fd.length};
+}
+
+/* =====================================================
+   FILTER OPTIONS
+===================================================== */
+function getOptions(data){
+  const u = k => ['all',...new Set(data.map(x=>x[k]).filter(Boolean))].sort();
+  const floors = ['all',...new Set(data.map(x=>x.noOfFloors).filter(Boolean))];
+  const cTypes = ['all',...new Set(data.map(x=>x.connectionType).filter(Boolean))];
+  return {company:u('company'),zone:u('zone'),circle:u('circle'),division:u('division'),subdivision:u('subdivision'),region:u('regionType'),floors,connectionType:cTypes};
+}
+
+/* =====================================================
+   RENDER FILTERS
+===================================================== */
+function renderFilters(opts){
+  const defs = [
+    {key:'company',label:'Company',optList:opts.company,fmt:v=>v==='all'?'All Companies':v},
+    {key:'zone',label:'Zone',optList:opts.zone,fmt:v=>v==='all'?'All Zones':v},
+    {key:'circle',label:'Circle',optList:opts.circle,fmt:v=>v==='all'?'All Circles':v},
+    {key:'division',label:'Division',optList:opts.division,fmt:v=>v==='all'?'All Divisions':cleanDiv(v)},
+    {key:'subdivision',label:'Subdivision',optList:opts.subdivision,fmt:v=>v==='all'?'All Subdivisions':v},
+    {key:'region',label:'Region Type',optList:opts.region,fmt:v=>v==='all'?'All Regions':v},
+    {key:'floors',label:'Floors',optList:opts.floors,fmt:v=>v==='all'?'All Floors':fmtFloor(v)},
+    {key:'connectionType',label:'Connection Type',optList:opts.connectionType,fmt:v=>v==='all'?'All Types':v}
+  ];
+  const grid = document.getElementById('filters-grid');
+  grid.innerHTML = defs.map(d=>`
+    <div class="filter-group">
+      <label>${d.label}</label>
+      <select data-key="${d.key}" onchange="onFilterChange('${d.key}',this.value)">
+        ${d.optList.map(o=>`<option value="${o}"${o===filters[d.key]?' selected':''}>${d.fmt(o)}</option>`).join('')}
+      </select>
+    </div>`).join('');
+  updateClearAllBtn();
+}
+
+function onFilterChange(key, val){
+  filters[key] = val;
+  // cascade reset
+  const cascade = {company:['zone','circle','division','subdivision','floors'],zone:['circle','division','subdivision','floors'],circle:['division','subdivision','floors'],division:['subdivision','floors'],subdivision:['floors']};
+  if(cascade[key]) cascade[key].forEach(k=>{filters[k]='all'});
+  updateClearAllBtn();
+  renderDashboard();
+}
+function applyDateFilter(){
+  filters.dateFrom = document.getElementById('date-from').value;
+  filters.dateTo = document.getElementById('date-to').value;
+  document.getElementById('btn-clear-date').style.display=(filters.dateFrom||filters.dateTo)?'inline':'none';
+  renderDashboard();
+}
+function clearDateFilter(){
+  filters.dateFrom='';filters.dateTo='';
+  document.getElementById('date-from').value='';
+  document.getElementById('date-to').value='';
+  document.getElementById('btn-clear-date').style.display='none';
+  renderDashboard();
+}
+function clearAllFilters(){
+  Object.keys(filters).forEach(k=>filters[k]='all');
+  filters.dateFrom='';filters.dateTo='';
+  document.querySelectorAll('#filters-grid select').forEach(s=>s.value='all');
+  document.getElementById('date-from').value='';
+  document.getElementById('date-to').value='';
+  document.getElementById('btn-clear-date').style.display='none';
+  updateClearAllBtn();
+  renderDashboard();
+}
+function updateClearAllBtn(){
+  const active = Object.entries(filters).some(([k,v])=>k!=='dateFrom'&&k!=='dateTo'&&v!=='all');
+  document.getElementById('btn-clear-all').style.display=active?'inline-block':'none';
+}
+
+/* =====================================================
+   RENDER KPIs
+===================================================== */
+function renderKPIs(s){
+  const kpiDefs = [
+    {title:'Buildings Serviced',value:fmtNum(s.buildings),icon:'🏠',bgColor:'#DBEAFE',formula:'COUNT(rows WHERE tempId OR parentId)',sub:''},
+    {title:'Service Connections',value:fmtNum(s.svcConns),icon:'🏢',bgColor:'#D1FAE5',formula:'COUNT(tempId) + COUNT(parentId) + SUM(childIds)',sub:`Temp: ${s.tIC} | Perm: ${s.pIC+s.cIC}`},
+    {title:'Total Load',value:`${s.totalLoad.toFixed(1)} KW`,icon:'⚡',bgColor:'#FEF3C7',formula:'SUM(loadKW)',sub:`Avg: ${s.avgLoad.toFixed(1)} KW`},
+    {
+      title:'Temporary Connections',value:fmtNum(s.tempCount),icon:'⏱️',bgColor:'#FFEDD5',formula:'COUNT(DISTINCT temporaryAccountId)',sub:'Applications registered',
+      breakdown:Object.entries(s.tmpFlags).map(([k,v])=>({k,v})).sort((a,b)=>b.v-a.v)
+    },
+    {
+      title:'Permanent Connections',value:fmtNum(s.permCount),icon:'✅',bgColor:'#EDE9FE',formula:'COUNT(parentId) + SUM(childIds)',sub:`Parent: ${s.permParent} | Child: ${s.permChild}`,
+      breakdown:Object.entries(s.permFlags).map(([k,v])=>({k,v}))
+    }
+  ];
+  document.getElementById('kpi-grid').innerHTML = kpiDefs.map(d=>{
+    const bkd = d.breakdown&&d.breakdown.length ? `
+      <div class="kpi-breakdown">
+        ${d.breakdown.map(b=>`<div class="kpi-breakdown-row"><span>${b.k}</span><span>${fmtNum(b.v)}</span></div>`).join('')}
+        <div class="kpi-breakdown-total"><span>Total</span><span>${fmtNum(d.breakdown.reduce((a,b)=>a+b.v,0))}</span></div>
+      </div>` : '';
+    return `
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <div>
+          <div class="kpi-label">${d.title} ${d.formula?`<button class="info-btn">ℹ<div class="tooltip-box"><b>Formula:</b>${d.formula}</div></button>`:''}
+          </div>
+          <div class="kpi-value">${d.value}</div>
+          ${d.sub?`<div class="kpi-sub">${d.sub}</div>`:''}
+        </div>
+        <div class="kpi-icon" style="background:${d.bgColor}">${d.icon}</div>
+      </div>
+      ${bkd}
+    </div>`;
+  }).join('');
+}
+
+/* =====================================================
+   RENDER CHARTS
+===================================================== */
+function mkChart(id, config){
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if(!ctx)return;
+  charts[id] = new Chart(ctx, config);
+}
+
+function renderCharts(s){
+  // Company pie
+  if(s.byCompany.length){
+    mkChart('chart-company',{type:'pie',data:{labels:s.byCompany.map(x=>x.label),datasets:[{data:s.byCompany.map(x=>x.value),backgroundColor:COLORS8,borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>`${c.label}: ${fmtNum(c.raw)}`}}}}});
+  }else{
+    document.getElementById('chart-company').parentElement.innerHTML='<div class="no-data">No data available</div>';
+  }
+  // Top divisions horizontal bar
+  if(s.topDivisions.length){
+    const labs=s.topDivisions.map(x=>x.name);
+    mkChart('chart-divisions',{type:'bar',data:{labels:labs,datasets:[{label:'Load (KW)',data:s.topDivisions.map(x=>x.load),backgroundColor:'#3B82F6',borderRadius:4,yAxisID:'y'},{label:'Connections',data:s.topDivisions.map(x=>x.cnt),backgroundColor:'#10B981',borderRadius:4,yAxisID:'y'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},scales:{y:{ticks:{font:{size:10}}},x:{ticks:{font:{size:10}}}}}});
+  }else{
+    document.getElementById('chart-divisions').parentElement.innerHTML='<div class="no-data">No data available</div>';
+  }
+  // Region pie
+  if(s.byRegion.length){
+    mkChart('chart-region',{type:'pie',data:{labels:s.byRegion.map(x=>x.label),datasets:[{data:s.byRegion.map(x=>x.value),backgroundColor:COLORS8,borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}}}}});
+  }else{
+    document.getElementById('chart-region').parentElement.innerHTML='<div class="no-data">No region data</div>';
+  }
+  // Plot area grouped bar
+  if(s.plotData.length){
+    mkChart('chart-plot',{type:'bar',data:{labels:s.plotData.map(x=>x.label),datasets:[{label:'Connections',data:s.plotData.map(x=>x.cnt),backgroundColor:'#10B981',borderRadius:4,yAxisID:'y1'},{label:'Load (KW)',data:s.plotData.map(x=>x.load),backgroundColor:'#3B82F6',borderRadius:4,yAxisID:'y2'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},scales:{y1:{type:'linear',position:'left',ticks:{font:{size:10}}},y2:{type:'linear',position:'right',ticks:{font:{size:10}},grid:{drawOnChartArea:false}},x:{ticks:{font:{size:10}}}}}});
+  }else{
+    document.getElementById('chart-plot').parentElement.innerHTML='<div class="no-data">No data available</div>';
+  }
+  // Floors grouped bar
+  if(s.floorData.length){
+    mkChart('chart-floors',{type:'bar',data:{labels:s.floorData.map(x=>x.label),datasets:[{label:'Connections',data:s.floorData.map(x=>x.cnt),backgroundColor:'#10B981',borderRadius:4,yAxisID:'y1'},{label:'Load (KW)',data:s.floorData.map(x=>x.load),backgroundColor:'#3B82F6',borderRadius:4,yAxisID:'y2'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},scales:{y1:{type:'linear',position:'left',ticks:{font:{size:10}}},y2:{type:'linear',position:'right',ticks:{font:{size:10}},grid:{drawOnChartArea:false}},x:{ticks:{font:{size:10}}}}}});
+  }else{
+    document.getElementById('chart-floors').parentElement.innerHTML='<div class="no-data">No data available</div>';
+  }
+  // Connections over time
+  if(s.timeData.length){
+    mkChart('chart-time',{type:'bar',data:{labels:s.timeData.map(x=>x.label),datasets:[{label:'Service Connections',data:s.timeData.map(x=>x.value),backgroundColor:'#F59E0B',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},scales:{x:{ticks:{font:{size:10},maxRotation:45}},y:{ticks:{font:{size:10}}}}}});
+  }else{
+    document.getElementById('chart-time').parentElement.innerHTML='<div class="no-data">No data available</div>';
+  }
+}
+
+/* =====================================================
+   RENDER DASHBOARD
+===================================================== */
+function renderDashboard(){
+  showUpdating(true);
+  setTimeout(()=>{
+    const stats = computeStats(allData, filters);
+    renderKPIs(stats);
+    renderCharts(stats);
+    document.getElementById('total-records').textContent = `Records: ${fmtNum(stats.total)}`;
+    showUpdating(false);
+  },10);
+}
+
+/* =====================================================
+   INIT
+===================================================== */
+async function init(){
+  try{
+    showOverlay('Loading dashboard data…');
+    let rows = null;
+    const cached = cache.get('raw');
+    if(cached){
+      rows = cached;
+      console.log('📦 Loaded from cache');
+    } else {
+      rows = await fetchCSV();
+      cache.set('raw', rows);
+    }
+    allData = rows;
+    const opts = getOptions(rows);
+    renderFilters(opts);
+    renderDashboard();
+    document.getElementById('last-updated').textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+    hideOverlay();
+  }catch(err){
+    console.error(err);
+    document.getElementById('overlay').innerHTML=`<div style="text-align:center;padding:40px"><div style="font-size:40px">⚠️</div><h2 style="margin:12px 0 6px">Error loading data</h2><p style="color:#6B7280;margin-bottom:16px">${err.message}</p><button onclick="location.reload()" style="padding:8px 20px;background:#3B82F6;color:#fff;border:none;border-radius:8px;cursor:pointer">Retry</button></div>`;
+  }
+}
+
+async function handleRefresh(){
+  const btn = document.getElementById('btn-refresh');
+  btn.disabled=true;
+  document.getElementById('refresh-icon').className='spin';
+  cache.clear();
+  allData=[];
+  try{
+    const rows = await fetchCSV();
+    cache.set('raw',rows);
+    allData=rows;
+    renderDashboard();
+    document.getElementById('last-updated').textContent=`Updated: ${new Date().toLocaleTimeString()}`;
+  }catch(e){alert('Refresh failed: '+e.message)}
+  btn.disabled=false;
+  document.getElementById('refresh-icon').className='';
+  document.getElementById('refresh-icon').textContent='↻';
+}
+
+init();
+</script>
+</body>
+</html>
