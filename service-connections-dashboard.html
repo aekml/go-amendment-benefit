@@ -1,532 +1,316 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Service Connections Dashboard</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Details of Applications Registered and installations serviced as per G.O (05.06.2026)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',system-ui,sans-serif;background:#F3F4F6;color:#111827;min-height:100vh}
-  .page{padding:20px;max-width:1400px;margin:0 auto}
-
-  /* Header */
-  .header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px}
-  .header-left h1{font-size:22px;font-weight:700;color:#111827}
-  .header-left p{font-size:13px;color:#6B7280;margin-top:2px}
-  .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .header-right .meta{font-size:11px;color:#9CA3AF}
-  .btn-refresh{display:flex;align-items:center;gap:5px;padding:5px 12px;font-size:12px;border:none;background:#E5E7EB;color:#374151;border-radius:6px;cursor:pointer;transition:background .2s}
-  .btn-refresh:hover{background:#D1D5DB}
-  .btn-refresh:disabled{opacity:.5;cursor:not-allowed}
-  .spin{animation:spin .8s linear infinite;display:inline-block;font-size:13px}
-  @keyframes spin{to{transform:rotate(360deg)}}
-
-  /* Date row */
-  .date-row{background:#fff;border-radius:10px;border:1px solid #E5E7EB;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end}
-  .date-row label{font-size:12px;font-weight:500;color:#374151}
-  .date-row input{font-size:12px;padding:5px 8px;border:1px solid #D1D5DB;border-radius:6px;outline:none}
-  .date-row input:focus{border-color:#3B82F6;box-shadow:0 0 0 2px rgba(59,130,246,.2)}
-  .btn-clear-date{font-size:12px;color:#EF4444;background:none;border:none;cursor:pointer;font-weight:500}
-  .btn-clear-date:hover{color:#B91C1C}
-
-  /* Filters */
-  .filters-card{background:#fff;border-radius:10px;border:1px solid #E5E7EB;padding:14px 16px;margin-bottom:18px}
-  .filters-title{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#374151;margin-bottom:10px}
-  .filters-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
-  .filter-group label{display:block;font-size:11px;font-weight:500;color:#374151;margin-bottom:3px}
-  .filter-group select{width:100%;border:1px solid #D1D5DB;border-radius:6px;padding:6px 8px;font-size:13px;color:#374151;background:#fff;outline:none;cursor:pointer}
-  .filter-group select:focus{border-color:#3B82F6;box-shadow:0 0 0 2px rgba(59,130,246,.2)}
-  .btn-clear-all{margin-top:10px;padding:5px 12px;font-size:12px;border:none;background:#F3F4F6;color:#374151;border-radius:6px;cursor:pointer;transition:background .2s}
-  .btn-clear-all:hover{background:#E5E7EB}
-
-  /* KPI cards */
-  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px}
-  .kpi-card{background:#fff;border-radius:10px;border:1px solid #E5E7EB;padding:14px 16px;position:relative;transition:box-shadow .2s}
-  .kpi-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
-  .kpi-header{display:flex;justify-content:space-between;align-items:flex-start}
-  .kpi-label{font-size:10px;font-weight:600;color:#6B7280;letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:4px}
-  .kpi-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
-  .kpi-value{font-size:28px;font-weight:700;color:#111827;margin:4px 0 2px}
-  .kpi-sub{font-size:11px;color:#9CA3AF}
-  .kpi-breakdown{margin-top:8px;padding-top:8px;border-top:1px solid #F3F4F6}
-  .kpi-breakdown-row{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#4B5563}
-  .kpi-breakdown-row span:last-child{font-weight:600;color:#111827}
-  .kpi-breakdown-total{display:flex;justify-content:space-between;font-size:11px;font-weight:700;padding-top:4px;margin-top:2px;border-top:1px solid #E5E7EB;color:#111827}
-  /* tooltip */
-  .info-btn{background:none;border:none;cursor:help;color:#9CA3AF;font-size:12px;padding:0;line-height:1;position:relative}
-  .tooltip-box{display:none;position:absolute;bottom:calc(100% + 6px);left:0;width:220px;background:#1F2937;color:#F9FAFB;font-size:11px;border-radius:8px;padding:8px 10px;z-index:100;line-height:1.4}
-  .tooltip-box b{color:#F9FAFB;display:block;margin-bottom:2px}
-  .info-btn:hover .tooltip-box{display:block}
-
-  /* Charts */
-  .charts-row{display:grid;gap:16px;margin-bottom:16px}
-  .charts-row.cols-2{grid-template-columns:1fr 1fr}
-  .charts-row.cols-1{grid-template-columns:1fr}
-  .chart-card{background:#fff;border-radius:10px;border:1px solid #E5E7EB;padding:16px}
-  .chart-card h3{font-size:14px;font-weight:600;color:#111827;margin-bottom:12px}
-  .chart-wrap{position:relative;height:300px}
-  .no-data{display:flex;align-items:center;justify-content:center;height:100%;color:#9CA3AF;font-size:13px}
-
-  /* Loading / error */
-  .overlay{position:fixed;inset:0;background:#F3F4F6;display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:12px}
-  .spinner{width:40px;height:40px;border:3px solid #E5E7EB;border-top-color:#3B82F6;border-radius:50%;animation:spin .8s linear infinite}
-  .overlay p{color:#6B7280;font-size:14px}
-  .updating-badge{font-size:11px;color:#6B7280;display:flex;align-items:center;gap:5px}
-  .updating-badge .mini-spin{width:14px;height:14px;border:2px solid #E5E7EB;border-top-color:#3B82F6;border-radius:50%;animation:spin .8s linear infinite}
-
-  @media(max-width:768px){
-    .charts-row.cols-2{grid-template-columns:1fr}
-    .kpi-grid{grid-template-columns:1fr 1fr}
+  :root {
+    --teal:#01696f; --teal-lt:#cedcd8; --green:#437a22; --orange:#964219;
+    --blue:#006494; --purple:#7a39bb; --gold:#d19900; --maroon:#a13544;
+    --text:#28251d; --muted:#7a7974; --bg:#f7f6f2; --surface:#ffffff;
+    --border:#dcd9d5; --divider:#e8e6e2; --radius:10px;
   }
-  @media(max-width:480px){
-    .kpi-grid{grid-template-columns:1fr}
-  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;font-size:14px;
+       color:var(--text);background:var(--bg);line-height:1.5}
+  .report-header{background:var(--teal);color:white;padding:28px 40px 24px;
+    display:flex;justify-content:space-between;align-items:flex-end;gap:24px}
+  .report-header h1{font-size:18px;font-weight:700;max-width:680px;line-height:1.4}
+  .report-meta{font-size:12px;opacity:.85;text-align:right;line-height:1.8;white-space:nowrap}
+  .container{max-width:1200px;margin:0 auto;padding:32px 40px}
+  .section{background:var(--surface);border-radius:var(--radius);
+    border:1px solid var(--border);margin-bottom:28px;
+    overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+  .section-header{background:var(--bg);border-bottom:1px solid var(--divider);
+    padding:14px 24px;display:flex;align-items:center;gap:10px}
+  .section-header h2{font-size:15px;font-weight:600;color:var(--teal)}
+  .badge{background:var(--teal-lt);color:var(--teal);font-size:11px;
+    font-weight:600;padding:2px 8px;border-radius:20px}
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:24px}
+  .kpi-card{background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);
+    padding:18px 16px;text-align:center}
+  .kpi-icon{font-size:22px;margin-bottom:6px}
+  .kpi-value{font-size:30px;font-weight:700;line-height:1.1}
+  .kpi-label{font-size:11px;color:var(--muted);margin-top:6px;
+    font-weight:500;text-transform:uppercase;letter-spacing:.4px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{background:var(--teal);color:white;font-weight:600;
+    padding:10px 14px;text-align:center;font-size:12px;
+    letter-spacing:.3px;text-transform:uppercase}
+  thead th:first-child{text-align:left}
+  .sub-header th{background:#e8f0ef;color:var(--teal);font-size:11px;padding:6px 14px}
+  tbody tr{border-bottom:1px solid var(--divider)}
+  tbody tr:last-child{border-bottom:none}
+  tbody tr:hover{background:var(--bg)}
+  td{padding:10px 14px}
+  td.co-name{font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  td.svc{color:var(--green);font-weight:500}
+  td.warn{color:var(--maroon);font-weight:500}
+  td.go1{color:var(--teal);font-weight:500}
+  td.go2{color:var(--green);font-weight:500}
+  td.soc{color:var(--orange);font-weight:500}
+  td.total-reg{font-weight:700}
+  td.total-svc{font-weight:700;color:var(--green)}
+  tfoot td{background:#f0f4f3;font-weight:700;font-size:13px;
+    padding:11px 14px;border-top:2px solid var(--teal)}
+  tfoot td.num{text-align:right}
+  .section-body{padding:24px}
+  .chart-container{position:relative;height:340px;padding:8px 0}
+  .report-footer{text-align:center;padding:20px;font-size:11px;
+    color:var(--muted);border-top:1px solid var(--divider)}
+  @media print{body{background:white}.section{box-shadow:none;break-inside:avoid}}
 </style>
 </head>
 <body>
-
-<!-- Loading overlay -->
-<div class="overlay" id="overlay">
-  <div class="spinner"></div>
-  <p id="overlay-msg">Loading dashboard data…</p>
+<div class="report-header">
+  <h1>Details of Applications Registered and installations serviced as per G.O (05.06.2026)</h1>
+  <div class="report-meta">
+    Generated on: 27 June 2026<br>
+    Source: escoms_merged_classified.csv<br>
+    Total Records: 17,890
+  </div>
 </div>
+<div class="container">
 
-<div class="page" id="app" style="display:none">
+  <div class="section">
+    <div class="section-header"><h2>Executive Summary</h2><span class="badge">8 KPIs</span></div>
+    <div class="kpi-grid">
+  <div class="kpi-card" style="border-top:4px solid #01696f">
+    <div class="kpi-icon">📋</div>
+    <div class="kpi-value" style="color:#01696f">17,890</div>
+    <div class="kpi-label">Total Records</div>
+  </div>
+  <div class="kpi-card" style="border-top:4px solid #437a22">
+    <div class="kpi-icon">✅</div>
+    <div class="kpi-value" style="color:#437a22">8,266</div>
+    <div class="kpi-label">G.O-1</div>
+  </div>
+  <div class="kpi-card" style="border-top:4px solid #006494">
+    <div class="kpi-icon">✅</div>
+    <div class="kpi-value" style="color:#006494">323</div>
+    <div class="kpi-label">G.O-2</div>
+  </div>
+  <div class="kpi-card" style="border-top:4px solid #d19900">
+    <div class="kpi-icon">🕐</div>
+    <div class="kpi-value" style="color:#d19900">5,310</div>
+    <div class="kpi-label">New Registration &amp; Service Pending</div>
+  </div>
+  <div class="kpi-card" style="border-top:4px solid #7a39bb">
+    <div class="kpi-icon">📌</div>
+    <div class="kpi-value" style="color:#7a39bb">1,513</div>
+    <div class="kpi-label">Eligible under G.O-1</div>
+  </div>
+  <div class="kpi-card" style="border-top:4px solid #964219">
+    <div class="kpi-icon">📌</div>
+    <div class="kpi-value" style="color:#964219">596</div>
+    <div class="kpi-label">Eligible under G.O-2</div>
+  </div>
+  <div class="kpi-card" style="border-top:4px solid #a12c7b">
+    <div class="kpi-icon">⚠️</div>
+    <div class="kpi-value" style="color:#a12c7b">48</div>
+    <div class="kpi-label">Plot area / Floor Violation</div>
+  </div>
+  <div class="kpi-card" style="border-top:4px solid #a13544">
+    <div class="kpi-icon">🚩</div>
+    <div class="kpi-value" style="color:#a13544">15,107</div>
+    <div class="kpi-label">Total Flagged Records</div>
+  </div></div>
+  </div>
 
-  <!-- Header -->
-  <div class="header">
-    <div class="header-left">
-      <h1>Service Connections Dashboard</h1>
-      <p>Monitor and analyze service connections across Karnataka</p>
+  <div class="section">
+    <div class="section-header">
+      <h2>Company &times; Region Breakdown</h2>
+      <span class="badge">Registrations &amp; Serviced</span>
     </div>
-    <div class="header-right">
-      <div id="updating-badge" class="updating-badge" style="display:none">
-        <div class="mini-spin"></div><span>Updating…</span>
+    <div class="section-body" style="padding:0">
+      <table>
+        <thead>
+          <tr><th rowspan="2" style="text-align:left">Company</th>
+              <th colspan="2">GBA</th><th colspan="2">RLB</th><th colspan="2">ULB</th><th colspan="2">Grand Total</th></tr>
+          <tr class="sub-header"><th>Reg</th><th>Svc</th><th>Reg</th><th>Svc</th><th>Reg</th><th>Svc</th><th>Reg</th><th>Svc</th></tr>
+        </thead>
+        <tbody><tr><td class="co-name">BESCOM</td><td class="num">3204</td><td class="num svc">90</td><td class="num">2716</td><td class="num svc">64</td><td class="num">708</td><td class="num svc">39</td><td class="num total-reg">6628</td><td class="num total-svc">193</td></tr><tr><td class="co-name">CESCOM</td><td class="num">0</td><td class="num svc">0</td><td class="num">1</td><td class="num svc">0</td><td class="num">588</td><td class="num svc">72</td><td class="num total-reg">589</td><td class="num total-svc">72</td></tr><tr><td class="co-name">GESCOM</td><td class="num">0</td><td class="num svc">0</td><td class="num">2043</td><td class="num svc">15</td><td class="num">1230</td><td class="num svc">67</td><td class="num total-reg">3273</td><td class="num total-svc">82</td></tr><tr><td class="co-name">HESCOM</td><td class="num">0</td><td class="num svc">0</td><td class="num">1597</td><td class="num svc">159</td><td class="num">1653</td><td class="num svc">160</td><td class="num total-reg">3250</td><td class="num total-svc">319</td></tr><tr><td class="co-name">MESCOM</td><td class="num">0</td><td class="num svc">0</td><td class="num">2255</td><td class="num svc">608</td><td class="num">1895</td><td class="num svc">883</td><td class="num total-reg">4150</td><td class="num total-svc">1491</td></tr></tbody>
+        <tfoot><tr><td>Total</td><td class="num total-reg">3204</td><td class="num total-svc">90</td><td class="num total-reg">8612</td><td class="num total-svc">846</td><td class="num total-reg">6074</td><td class="num total-svc">1221</td>
+          <td class="num">17890</td>
+          <td class="num total-svc">2157</td></tr></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <h2>Classification Breakdown per Company</h2>
+      <span class="badge">predicted_flag</span>
+    </div>
+    <div class="section-body" style="padding:0">
+      <table>
+        <thead><tr><th style="text-align:left">Company</th>
+          <th>G.O-1</th><th>G.O-2</th><th>Serviced with OC</th><th>Total</th></tr></thead>
+        <tbody><tr>
+    <td class="co-name">BESCOM</td>
+    <td class="num go1">775</td><td class="num go2">75</td>
+    <td class="num soc">118</td>
+    <td class="num total-reg">968</td>
+  </tr><tr>
+    <td class="co-name">CESCOM</td>
+    <td class="num go1">263</td><td class="num go2">59</td>
+    <td class="num soc">13</td>
+    <td class="num total-reg">335</td>
+  </tr><tr>
+    <td class="co-name">GESCOM</td>
+    <td class="num go1">2675</td><td class="num go2">26</td>
+    <td class="num soc">56</td>
+    <td class="num total-reg">2757</td>
+  </tr><tr>
+    <td class="co-name">HESCOM</td>
+    <td class="num go1">2548</td><td class="num go2">125</td>
+    <td class="num soc">194</td>
+    <td class="num total-reg">2867</td>
+  </tr><tr>
+    <td class="co-name">MESCOM</td>
+    <td class="num go1">2005</td><td class="num go2">38</td>
+    <td class="num soc">1453</td>
+    <td class="num total-reg">3496</td>
+  </tr></tbody>
+        <tfoot><tr><td>Total</td>
+          <td class="num go1">8266</td>
+          <td class="num go2">323</td>
+          <td class="num soc">1834</td>
+          <td class="num total-reg">10423</td>
+        </tr></tfoot>
+      </table>
+    </div>
+    <div class="section-body">
+      <div class="chart-container">
+        <canvas id="classChart"></canvas>
       </div>
-      <span class="meta" id="last-updated"></span>
-      <span class="meta" id="total-records"></span>
-      <button class="btn-refresh" id="btn-refresh" onclick="handleRefresh()">
-        <span id="refresh-icon">↻</span> Refresh
-      </button>
     </div>
   </div>
 
-  <!-- Date Range -->
-  <div class="date-row">
-    <span>📅</span>
-    <label>From:</label>
-    <input type="date" id="date-from" onchange="applyDateFilter()"/>
-    <label>To:</label>
-    <input type="date" id="date-to" onchange="applyDateFilter()"/>
-    <button class="btn-clear-date" id="btn-clear-date" style="display:none" onclick="clearDateFilter()">Clear</button>
-  </div>
-
-  <!-- Filters -->
-  <div class="filters-card">
-    <div class="filters-title">🔽 Filters</div>
-    <div class="filters-grid" id="filters-grid">
-      <!-- Selects injected by JS -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Additional Flag Analysis per Company</h2>
+      <span class="badge">additional_flags</span>
     </div>
-    <button class="btn-clear-all" id="btn-clear-all" style="display:none" onclick="clearAllFilters()">Clear All Filters</button>
-  </div>
-
-  <!-- KPI Cards -->
-  <div class="kpi-grid" id="kpi-grid"></div>
-
-  <!-- Charts row 1 -->
-  <div class="charts-row cols-2">
-    <div class="chart-card">
-      <h3>Connections by Company</h3>
-      <div class="chart-wrap"><canvas id="chart-company"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <h3>Top 10 Divisions – Connections &amp; Load</h3>
-      <div class="chart-wrap"><canvas id="chart-divisions"></canvas></div>
-    </div>
-  </div>
-
-  <!-- Charts row 2 -->
-  <div class="charts-row cols-2" style="margin-bottom:16px">
-    <div class="chart-card">
-      <h3>Region Type</h3>
-      <div class="chart-wrap"><canvas id="chart-region"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <h3>Plot Area Category Comparison</h3>
-      <div class="chart-wrap"><canvas id="chart-plot"></canvas></div>
-    </div>
-  </div>
-
-  <!-- Charts row 3 -->
-  <div class="charts-row cols-1" style="margin-bottom:16px">
-    <div class="chart-card">
-      <h3>Floors Category Comparison</h3>
-      <div class="chart-wrap" style="height:320px"><canvas id="chart-floors"></canvas></div>
+    <div class="section-body" style="padding:0">
+      <table>
+        <thead><tr><th style="text-align:left">Company</th>
+          <th>Total Flagged</th><th>Invalid Floors</th>
+          <th>Invalid Plot Area</th><th>Flag Rate</th></tr></thead>
+        <tbody><tr>
+    <td class="co-name">BESCOM</td>
+    <td class="num">5543</td>
+    <td class="num warn">4089</td>
+    <td class="num warn">5380</td>
+    <td class="num">31.0%</td>
+  </tr><tr>
+    <td class="co-name">CESCOM</td>
+    <td class="num">316</td>
+    <td class="num warn">289</td>
+    <td class="num warn">271</td>
+    <td class="num">1.8%</td>
+  </tr><tr>
+    <td class="co-name">GESCOM</td>
+    <td class="num">3049</td>
+    <td class="num warn">709</td>
+    <td class="num warn">2801</td>
+    <td class="num">17.0%</td>
+  </tr><tr>
+    <td class="co-name">HESCOM</td>
+    <td class="num">2686</td>
+    <td class="num warn">636</td>
+    <td class="num warn">2516</td>
+    <td class="num">15.0%</td>
+  </tr><tr>
+    <td class="co-name">MESCOM</td>
+    <td class="num">3513</td>
+    <td class="num warn">1270</td>
+    <td class="num warn">3484</td>
+    <td class="num">19.6%</td>
+  </tr></tbody>
+        <tfoot><tr><td>Total</td>
+          <td class="num">15107</td>
+          <td class="num warn">6993</td>
+          <td class="num warn">14452</td>
+          <td class="num">84.4%</td>
+        </tr></tfoot>
+      </table>
     </div>
   </div>
 
-  <!-- Charts row 4 -->
-  <div class="charts-row cols-1" style="margin-bottom:20px">
-    <div class="chart-card">
-      <h3>Connections Over Time (Monthly)</h3>
-      <div class="chart-wrap" style="height:320px"><canvas id="chart-time"></canvas></div>
+  <div class="section">
+    <div class="section-header">
+      <h2>Monthly Registration Trend</h2>
+      <span class="badge">dateOfRegistration &middot; 2023&ndash;2026</span>
+    </div>
+    <div class="section-body">
+      <div class="chart-container">
+        <canvas id="trendChart"></canvas>
+      </div>
     </div>
   </div>
 
 </div>
-
+<div class="report-footer">
+  Generated by generateReport_v1.js &nbsp;|&nbsp; 27 June 2026 &nbsp;|&nbsp;
+  Details of Applications Registered and installations serviced as per G.O (05.06.2026)
+</div>
 <script>
-/* =====================================================
-   CONFIG
-===================================================== */
-const CSV_URL = 'https://raw.githubusercontent.com/aekml/go-amendment-benefit/refs/heads/main/go-records-classified%20-%20Copy.csv';
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour
-const COLORS8 = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6','#F472B6'];
-
-/* =====================================================
-   CACHE
-===================================================== */
-const cache = {
-  get(k){
-    try{const d=localStorage.getItem('sc_'+k);if(!d)return null;const p=JSON.parse(d);return(Date.now()-p.ts<CACHE_TTL)?p.data:null}catch{return null}
-  },
-  set(k,v){try{localStorage.setItem('sc_'+k,JSON.stringify({data:v,ts:Date.now()}))}catch{}},
-  clear(){try{Object.keys(localStorage).filter(k=>k.startsWith('sc_')).forEach(k=>localStorage.removeItem(k))}catch{}}
-};
-
-/* =====================================================
-   STATE
-===================================================== */
-let allData = [];
-let filters = {company:'all',zone:'all',circle:'all',division:'all',subdivision:'all',region:'all',plotAreaCategory:'all',floors:'all',connectionType:'all',dateFrom:'',dateTo:''};
-let charts = {};
-
-/* =====================================================
-   HELPERS
-===================================================== */
-const cleanDiv = n => n ? n.replace(' Division','') : '';
-const floorMap = {GROUND:'Ground Floor',G_PLUS_1:'Ground+1',G_PLUS_2:'Ground+2',G_PLUS_3:'Ground+3',G_PLUS_4:'Ground+4',G_PLUS_5:'Ground+5',G_PLUS_6:'Ground+6',G_PLUS_7:'Ground+7',G_PLUS_8:'Ground+8',G_PLUS_9:'Ground+9',G_PLUS_10:'Ground+10',S_PLUS_1:'Stilt+1',S_PLUS_2:'Stilt+2',S_PLUS_3:'Stilt+3',S_PLUS_4:'Stilt+4',S_PLUS_5:'Stilt+5',S_PLUS_6:'Stilt+6',S_PLUS_7:'Stilt+7',S_PLUS_8:'Stilt+8',S_PLUS_9:'Stilt+9',S_PLUS_10:'Stilt+10'};
-const fmtFloor = n => floorMap[n] || n;
-const fmtMonth = s => {if(!s)return '';const [y,m]=s.split('-');const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return `${mn[parseInt(m)-1]} ${y}`};
-const plotCat = v => {const n=Number(v);if(!n||isNaN(n))return 'Unknown';if(n<1200)return '<1200';if(n<2880)return '1200–2880';if(n<4000)return '2880–4000';return '>4000'};
-const parseChildIds = s => {if(!s||s===''||s==='null'||s==='NULL')return [];return String(s).split('|').map(x=>x.trim()).filter(Boolean)};
-const fmtNum = n => Number(n).toLocaleString();
-const showOverlay = msg => {document.getElementById('overlay-msg').textContent=msg||'Loading…';document.getElementById('overlay').style.display='flex'};
-const hideOverlay = () => {document.getElementById('overlay').style.display='none';document.getElementById('app').style.display='block'};
-const showUpdating = b => {document.getElementById('updating-badge').style.display=b?'flex':'none'};
-const destroyChart = id => {if(charts[id]){charts[id].destroy();delete charts[id]}};
-
-/* =====================================================
-   FETCH & PARSE CSV
-===================================================== */
-async function fetchCSV(){
-  const res = await fetch(CSV_URL,{headers:{'Accept':'text/csv'}});
-  const txt = await res.text();
-  const parsed = Papa.parse(txt,{header:true,skipEmptyLines:true,transformHeader:h=>h.trim()});
-  let rows = (parsed.data||[]).map(row=>{
-    const tempId = row.temporaryAccountId?.trim()||null;
-    const cleanTemp = tempId&&tempId!=='null'&&tempId!=='NULL'?tempId:null;
-    const parentId = row.parentAccountId?.trim()||null;
-    const cleanParent = parentId&&parentId!=='null'&&parentId!=='NULL'?parentId:null;
-    const childIds = parseChildIds(row.childAccountIds);
-    return {
-      subdivision:row.subdivision||'',division:row.division||'',circle:row.circle||'',zone:row.zone||'',company:row.company||'',
-      temporaryAccountId:cleanTemp,parentAccountId:cleanParent,childAccountIds:childIds,
-      connectionType:cleanTemp?'TEMPORARY':'PERMANENT',
-      tempDateOfRegistration:row.tempDateOfRegistration||'',dateOfRegistration:row.dateOfRegistration||'',
-      dateOfService:row.dateOfService||'',plotAreaSqft:Number(row.plotAreaSqft)||0,noOfFloors:row.noOfFloors||'',
-      regionType:row.regionType||'',loadKW:Number(row.loadKW)||0,tariff:row.tariff||'',
-      flag:row.flag||'',predicted_flag:row.predicted_flag||'',
-      hasBuildingId:!!(cleanTemp||cleanParent)
-    };
-  }).filter(r=>r.company&&r.company!=='');
-  // dedupe
-  const seen=new Set();
-  rows=rows.filter(r=>{const k=`${r.temporaryAccountId||'NT'}|${r.parentAccountId||'NP'}|${r.division}|${r.subdivision}|${r.company}`;if(seen.has(k))return false;seen.add(k);return true});
-  return rows;
-}
-
-/* =====================================================
-   COMPUTE STATS
-===================================================== */
-function computeStats(data, filt){
-  // common filters
-  const applyCommon = d => {
-    let f = d;
-    if(filt.company!=='all') f=f.filter(x=>x.company===filt.company);
-    if(filt.zone!=='all') f=f.filter(x=>x.zone===filt.zone);
-    if(filt.circle!=='all') f=f.filter(x=>x.circle===filt.circle);
-    if(filt.division!=='all') f=f.filter(x=>x.division===filt.division);
-    if(filt.subdivision!=='all') f=f.filter(x=>x.subdivision===filt.subdivision);
-    if(filt.region!=='all') f=f.filter(x=>x.regionType===filt.region);
-    if(filt.floors!=='all') f=f.filter(x=>x.noOfFloors===filt.floors);
-    if(filt.connectionType!=='all') f=f.filter(x=>x.connectionType===filt.connectionType);
-    return f;
-  };
-  let fd=applyCommon(data), td=applyCommon(data), pd=applyCommon(data);
-  const df=filt.dateFrom?new Date(filt.dateFrom):null, dt=filt.dateTo?new Date(filt.dateTo):null;
-  if(df||dt){
-    fd=fd.filter(x=>{if(!x.dateOfService)return false;const d=new Date(x.dateOfService);return(!df||d>=df)&&(!dt||d<=dt)});
-    td=td.filter(x=>{if(!x.tempDateOfRegistration)return false;const d=new Date(x.tempDateOfRegistration);return(!df||d>=df)&&(!dt||d<=dt)});
-    pd=pd.filter(x=>{if(!x.dateOfRegistration)return false;const d=new Date(x.dateOfRegistration);return(!df||d>=df)&&(!dt||d<=dt)});
-  }
-  // buildings
-  const buildings=fd.filter(x=>x.hasBuildingId).length;
-  // service connections
-  let tIC=0,pIC=0,cIC=0;
-  fd.forEach(x=>{if(x.temporaryAccountId)tIC++;if(x.parentAccountId)pIC++;cIC+=x.childAccountIds.length});
-  const svcConns=tIC+pIC+cIC;
-  // temp connections
-  const tempIds=new Set();
-  const tmpFlags={};
-  td.forEach(x=>{if(x.temporaryAccountId){tempIds.add(x.temporaryAccountId);const fl=x.predicted_flag?.trim()||'Not Classified';tmpFlags[fl]=(tmpFlags[fl]||0)+1}});
-  const tempCount=tempIds.size;
-  // perm connections
-  let permParent=0,permChild=0;
-  const permFlags={};
-  pd.forEach(x=>{const fl=x.predicted_flag?.trim()||'Not Classified';if(x.parentAccountId){permParent++;permFlags[fl]=(permFlags[fl]||0)+1}x.childAccountIds.forEach(()=>{permChild++;permFlags[fl]=(permFlags[fl]||0)+1})});
-  const permCount=permParent+permChild;
-  const totalLoad=fd.reduce((s,x)=>s+x.loadKW,0);
-  // charts data
-  const byCompany=Object.entries(fd.reduce((a,x)=>{a[x.company]=(a[x.company]||0)+1;return a},{})).map(([k,v])=>({label:k,value:v}));
-  const byRegion=Object.entries(fd.reduce((a,x)=>{a[x.regionType||'Unknown']=(a[x.regionType||'Unknown']||0)+1;return a},{})).map(([k,v])=>({label:k,value:v}));
-  const divMap={};
-  fd.forEach(x=>{if(!divMap[x.division])divMap[x.division]={load:0,cnt:0};divMap[x.division].load+=x.loadKW;divMap[x.division].cnt++});
-  const topDivisions=Object.entries(divMap).map(([k,v])=>({name:cleanDiv(k),load:Math.round(v.load*10)/10,cnt:v.cnt})).sort((a,b)=>b.load-a.load).slice(0,10);
-  const plotMap={};
-  fd.forEach(x=>{const c=plotCat(x.plotAreaSqft);if(!plotMap[c])plotMap[c]={cnt:0,load:0};plotMap[c].cnt++;plotMap[c].load+=x.loadKW});
-  const plotData=Object.entries(plotMap).map(([k,v])=>({label:k,cnt:v.cnt,load:Math.round(v.load*10)/10}));
-  const floorMap2={};
-  fd.forEach(x=>{const f=fmtFloor(x.noOfFloors);if(!floorMap2[f])floorMap2[f]={cnt:0,load:0};floorMap2[f].cnt++;floorMap2[f].load+=x.loadKW});
-  const floorData=Object.entries(floorMap2).map(([k,v])=>({label:k,cnt:v.cnt,load:Math.round(v.load*10)/10}));
-  const timeMap={};
-  fd.forEach(x=>{if(!x.dateOfService)return;const d=new Date(x.dateOfService);const my=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;timeMap[my]=(timeMap[my]||0)+1});
-  const timeData=Object.entries(timeMap).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>({label:fmtMonth(k),value:v}));
-  return {buildings,svcConns,totalLoad,avgLoad:fd.length?totalLoad/fd.length:0,tempCount,permCount,tIC,pIC,cIC,permParent,permChild,tmpFlags,permFlags,byCompany,byRegion,topDivisions,plotData,floorData,timeData,total:fd.length};
-}
-
-/* =====================================================
-   FILTER OPTIONS
-===================================================== */
-function getOptions(data){
-  const u = k => ['all',...new Set(data.map(x=>x[k]).filter(Boolean))].sort();
-  const floors = ['all',...new Set(data.map(x=>x.noOfFloors).filter(Boolean))];
-  const cTypes = ['all',...new Set(data.map(x=>x.connectionType).filter(Boolean))];
-  return {company:u('company'),zone:u('zone'),circle:u('circle'),division:u('division'),subdivision:u('subdivision'),region:u('regionType'),floors,connectionType:cTypes};
-}
-
-/* =====================================================
-   RENDER FILTERS
-===================================================== */
-function renderFilters(opts){
-  const defs = [
-    {key:'company',label:'Company',optList:opts.company,fmt:v=>v==='all'?'All Companies':v},
-    {key:'zone',label:'Zone',optList:opts.zone,fmt:v=>v==='all'?'All Zones':v},
-    {key:'circle',label:'Circle',optList:opts.circle,fmt:v=>v==='all'?'All Circles':v},
-    {key:'division',label:'Division',optList:opts.division,fmt:v=>v==='all'?'All Divisions':cleanDiv(v)},
-    {key:'subdivision',label:'Subdivision',optList:opts.subdivision,fmt:v=>v==='all'?'All Subdivisions':v},
-    {key:'region',label:'Region Type',optList:opts.region,fmt:v=>v==='all'?'All Regions':v},
-    {key:'floors',label:'Floors',optList:opts.floors,fmt:v=>v==='all'?'All Floors':fmtFloor(v)},
-    {key:'connectionType',label:'Connection Type',optList:opts.connectionType,fmt:v=>v==='all'?'All Types':v}
-  ];
-  const grid = document.getElementById('filters-grid');
-  grid.innerHTML = defs.map(d=>`
-    <div class="filter-group">
-      <label>${d.label}</label>
-      <select data-key="${d.key}" onchange="onFilterChange('${d.key}',this.value)">
-        ${d.optList.map(o=>`<option value="${o}"${o===filters[d.key]?' selected':''}>${d.fmt(o)}</option>`).join('')}
-      </select>
-    </div>`).join('');
-  updateClearAllBtn();
-}
-
-function onFilterChange(key, val){
-  filters[key] = val;
-  // cascade reset
-  const cascade = {company:['zone','circle','division','subdivision','floors'],zone:['circle','division','subdivision','floors'],circle:['division','subdivision','floors'],division:['subdivision','floors'],subdivision:['floors']};
-  if(cascade[key]) cascade[key].forEach(k=>{filters[k]='all'});
-  updateClearAllBtn();
-  renderDashboard();
-}
-function applyDateFilter(){
-  filters.dateFrom = document.getElementById('date-from').value;
-  filters.dateTo = document.getElementById('date-to').value;
-  document.getElementById('btn-clear-date').style.display=(filters.dateFrom||filters.dateTo)?'inline':'none';
-  renderDashboard();
-}
-function clearDateFilter(){
-  filters.dateFrom='';filters.dateTo='';
-  document.getElementById('date-from').value='';
-  document.getElementById('date-to').value='';
-  document.getElementById('btn-clear-date').style.display='none';
-  renderDashboard();
-}
-function clearAllFilters(){
-  Object.keys(filters).forEach(k=>filters[k]='all');
-  filters.dateFrom='';filters.dateTo='';
-  document.querySelectorAll('#filters-grid select').forEach(s=>s.value='all');
-  document.getElementById('date-from').value='';
-  document.getElementById('date-to').value='';
-  document.getElementById('btn-clear-date').style.display='none';
-  updateClearAllBtn();
-  renderDashboard();
-}
-function updateClearAllBtn(){
-  const active = Object.entries(filters).some(([k,v])=>k!=='dateFrom'&&k!=='dateTo'&&v!=='all');
-  document.getElementById('btn-clear-all').style.display=active?'inline-block':'none';
-}
-
-/* =====================================================
-   RENDER KPIs
-===================================================== */
-function renderKPIs(s){
-  const kpiDefs = [
-    {title:'Buildings Serviced',value:fmtNum(s.buildings),icon:'🏠',bgColor:'#DBEAFE',formula:'COUNT(rows WHERE tempId OR parentId)',sub:''},
-    {title:'Service Connections',value:fmtNum(s.svcConns),icon:'🏢',bgColor:'#D1FAE5',formula:'COUNT(tempId) + COUNT(parentId) + SUM(childIds)',sub:`Temp: ${s.tIC} | Perm: ${s.pIC+s.cIC}`},
-    {title:'Total Load',value:`${s.totalLoad.toFixed(1)} KW`,icon:'⚡',bgColor:'#FEF3C7',formula:'SUM(loadKW)',sub:`Avg: ${s.avgLoad.toFixed(1)} KW`},
-    {
-      title:'Temporary Connections',value:fmtNum(s.tempCount),icon:'⏱️',bgColor:'#FFEDD5',formula:'COUNT(DISTINCT temporaryAccountId)',sub:'Applications registered',
-      breakdown:Object.entries(s.tmpFlags).map(([k,v])=>({k,v})).sort((a,b)=>b.v-a.v)
+(function() {
+  // Stacked bar chart
+  new Chart(document.getElementById('classChart'), {
+    type: 'bar',
+    data: {
+      labels: ["BESCOM","CESCOM","GESCOM","HESCOM","MESCOM"],
+      datasets: [
+        { label:'G.O-1',           data:[775,263,2675,2548,2005], backgroundColor:'#01696f', borderWidth:1, borderColor:'white' },
+        { label:'G.O-2',           data:[75,59,26,125,38], backgroundColor:'#437a22', borderWidth:1, borderColor:'white' },
+        { label:'Serviced with OC',data:[118,13,56,194,1453], backgroundColor:'#964219', borderWidth:1, borderColor:'white' },
+      ]
     },
-    {
-      title:'Permanent Connections',value:fmtNum(s.permCount),icon:'✅',bgColor:'#EDE9FE',formula:'COUNT(parentId) + SUM(childIds)',sub:`Parent: ${s.permParent} | Child: ${s.permChild}`,
-      breakdown:Object.entries(s.permFlags).map(([k,v])=>({k,v}))
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: {
+        legend: { position:'bottom', labels:{ font:{size:13}, padding:20 } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label+': '+ctx.parsed.y.toLocaleString('en-IN') } }
+      },
+      scales: {
+        x: { stacked:true, grid:{display:false}, ticks:{font:{size:13}} },
+        y: { stacked:true, grid:{color:'rgba(0,0,0,0.06)'}, ticks:{font:{size:12}} }
+      }
     }
-  ];
-  document.getElementById('kpi-grid').innerHTML = kpiDefs.map(d=>{
-    const bkd = d.breakdown&&d.breakdown.length ? `
-      <div class="kpi-breakdown">
-        ${d.breakdown.map(b=>`<div class="kpi-breakdown-row"><span>${b.k}</span><span>${fmtNum(b.v)}</span></div>`).join('')}
-        <div class="kpi-breakdown-total"><span>Total</span><span>${fmtNum(d.breakdown.reduce((a,b)=>a+b.v,0))}</span></div>
-      </div>` : '';
-    return `
-    <div class="kpi-card">
-      <div class="kpi-header">
-        <div>
-          <div class="kpi-label">${d.title} ${d.formula?`<button class="info-btn">ℹ<div class="tooltip-box"><b>Formula:</b>${d.formula}</div></button>`:''}
-          </div>
-          <div class="kpi-value">${d.value}</div>
-          ${d.sub?`<div class="kpi-sub">${d.sub}</div>`:''}
-        </div>
-        <div class="kpi-icon" style="background:${d.bgColor}">${d.icon}</div>
-      </div>
-      ${bkd}
-    </div>`;
-  }).join('');
-}
+  });
 
-/* =====================================================
-   RENDER CHARTS
-===================================================== */
-function mkChart(id, config){
-  destroyChart(id);
-  const ctx = document.getElementById(id);
-  if(!ctx)return;
-  charts[id] = new Chart(ctx, config);
-}
-
-function renderCharts(s){
-  // Company pie
-  if(s.byCompany.length){
-    mkChart('chart-company',{type:'pie',data:{labels:s.byCompany.map(x=>x.label),datasets:[{data:s.byCompany.map(x=>x.value),backgroundColor:COLORS8,borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>`${c.label}: ${fmtNum(c.raw)}`}}}}});
-  }else{
-    document.getElementById('chart-company').parentElement.innerHTML='<div class="no-data">No data available</div>';
-  }
-  // Top divisions horizontal bar
-  if(s.topDivisions.length){
-    const labs=s.topDivisions.map(x=>x.name);
-    mkChart('chart-divisions',{type:'bar',data:{labels:labs,datasets:[{label:'Load (KW)',data:s.topDivisions.map(x=>x.load),backgroundColor:'#3B82F6',borderRadius:4,yAxisID:'y'},{label:'Connections',data:s.topDivisions.map(x=>x.cnt),backgroundColor:'#10B981',borderRadius:4,yAxisID:'y'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},scales:{y:{ticks:{font:{size:10}}},x:{ticks:{font:{size:10}}}}}});
-  }else{
-    document.getElementById('chart-divisions').parentElement.innerHTML='<div class="no-data">No data available</div>';
-  }
-  // Region pie
-  if(s.byRegion.length){
-    mkChart('chart-region',{type:'pie',data:{labels:s.byRegion.map(x=>x.label),datasets:[{data:s.byRegion.map(x=>x.value),backgroundColor:COLORS8,borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}}}}});
-  }else{
-    document.getElementById('chart-region').parentElement.innerHTML='<div class="no-data">No region data</div>';
-  }
-  // Plot area grouped bar
-  if(s.plotData.length){
-    mkChart('chart-plot',{type:'bar',data:{labels:s.plotData.map(x=>x.label),datasets:[{label:'Connections',data:s.plotData.map(x=>x.cnt),backgroundColor:'#10B981',borderRadius:4,yAxisID:'y1'},{label:'Load (KW)',data:s.plotData.map(x=>x.load),backgroundColor:'#3B82F6',borderRadius:4,yAxisID:'y2'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},scales:{y1:{type:'linear',position:'left',ticks:{font:{size:10}}},y2:{type:'linear',position:'right',ticks:{font:{size:10}},grid:{drawOnChartArea:false}},x:{ticks:{font:{size:10}}}}}});
-  }else{
-    document.getElementById('chart-plot').parentElement.innerHTML='<div class="no-data">No data available</div>';
-  }
-  // Floors grouped bar
-  if(s.floorData.length){
-    mkChart('chart-floors',{type:'bar',data:{labels:s.floorData.map(x=>x.label),datasets:[{label:'Connections',data:s.floorData.map(x=>x.cnt),backgroundColor:'#10B981',borderRadius:4,yAxisID:'y1'},{label:'Load (KW)',data:s.floorData.map(x=>x.load),backgroundColor:'#3B82F6',borderRadius:4,yAxisID:'y2'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},scales:{y1:{type:'linear',position:'left',ticks:{font:{size:10}}},y2:{type:'linear',position:'right',ticks:{font:{size:10}},grid:{drawOnChartArea:false}},x:{ticks:{font:{size:10}}}}}});
-  }else{
-    document.getElementById('chart-floors').parentElement.innerHTML='<div class="no-data">No data available</div>';
-  }
-  // Connections over time
-  if(s.timeData.length){
-    mkChart('chart-time',{type:'bar',data:{labels:s.timeData.map(x=>x.label),datasets:[{label:'Service Connections',data:s.timeData.map(x=>x.value),backgroundColor:'#F59E0B',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},scales:{x:{ticks:{font:{size:10},maxRotation:45}},y:{ticks:{font:{size:10}}}}}});
-  }else{
-    document.getElementById('chart-time').parentElement.innerHTML='<div class="no-data">No data available</div>';
-  }
-}
-
-/* =====================================================
-   RENDER DASHBOARD
-===================================================== */
-function renderDashboard(){
-  showUpdating(true);
-  setTimeout(()=>{
-    const stats = computeStats(allData, filters);
-    renderKPIs(stats);
-    renderCharts(stats);
-    document.getElementById('total-records').textContent = `Records: ${fmtNum(stats.total)}`;
-    showUpdating(false);
-  },10);
-}
-
-/* =====================================================
-   INIT
-===================================================== */
-async function init(){
-  try{
-    showOverlay('Loading dashboard data…');
-    let rows = null;
-    const cached = cache.get('raw');
-    if(cached){
-      rows = cached;
-      console.log('📦 Loaded from cache');
-    } else {
-      rows = await fetchCSV();
-      cache.set('raw', rows);
+  // Line trend chart
+  new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+      labels: ["Dec-22","Mar-23","Apr-23","Jun-23","Sep-23","Nov-23","Mar-24","May-24","Jun-24","Jul-24","Aug-24","Oct-24","Nov-24","Dec-24","Jan-25","Feb-25","Mar-25","Apr-25","May-25","Jun-25","Jul-25","Aug-25","Sep-25","Oct-25","Nov-25","Dec-25","Jan-26","Feb-26","Mar-26","Apr-26","May-26","Jun-26"],
+      datasets: [{
+        label:'Registrations',
+        data: [1,1,7,2,3,1,3,1,1,1,1,2,1,3,8,24,36,13,8,9,4,15,18,33,103,268,2545,1500,554,850,2875,8999],
+        borderColor:'#01696f', borderWidth:2.5,
+        backgroundColor:'rgba(1,105,111,0.08)',
+        fill:true, pointRadius:4, pointBackgroundColor:'#01696f', tension:0.3
+      }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: {
+        legend:{ display:false },
+        tooltip:{ callbacks:{ label: ctx => 'Registrations: '+ctx.parsed.y.toLocaleString('en-IN') } }
+      },
+      scales: {
+        x: { grid:{display:false}, ticks:{ font:{size:11}, maxRotation:45, maxTicksLimit:12 } },
+        y: { beginAtZero:true, grid:{color:'rgba(0,0,0,0.06)'}, ticks:{font:{size:12}} }
+      }
     }
-    allData = rows;
-    const opts = getOptions(rows);
-    renderFilters(opts);
-    renderDashboard();
-    document.getElementById('last-updated').textContent = `Updated: ${new Date().toLocaleTimeString()}`;
-    hideOverlay();
-  }catch(err){
-    console.error(err);
-    document.getElementById('overlay').innerHTML=`<div style="text-align:center;padding:40px"><div style="font-size:40px">⚠️</div><h2 style="margin:12px 0 6px">Error loading data</h2><p style="color:#6B7280;margin-bottom:16px">${err.message}</p><button onclick="location.reload()" style="padding:8px 20px;background:#3B82F6;color:#fff;border:none;border-radius:8px;cursor:pointer">Retry</button></div>`;
-  }
-}
-
-async function handleRefresh(){
-  const btn = document.getElementById('btn-refresh');
-  btn.disabled=true;
-  document.getElementById('refresh-icon').className='spin';
-  cache.clear();
-  allData=[];
-  try{
-    const rows = await fetchCSV();
-    cache.set('raw',rows);
-    allData=rows;
-    renderDashboard();
-    document.getElementById('last-updated').textContent=`Updated: ${new Date().toLocaleTimeString()}`;
-  }catch(e){alert('Refresh failed: '+e.message)}
-  btn.disabled=false;
-  document.getElementById('refresh-icon').className='';
-  document.getElementById('refresh-icon').textContent='↻';
-}
-
-init();
+  });
+})();
 </script>
 </body>
 </html>
