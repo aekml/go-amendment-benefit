@@ -29,9 +29,9 @@
   .section-header h2{font-size:15px;font-weight:600;color:var(--teal)}
   .badge{background:var(--teal-lt);color:var(--teal);font-size:11px;
     font-weight:600;padding:2px 8px;border-radius:20px}
-  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:24px}
+  .kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;padding:24px}
   .kpi-card{background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);
-    padding:18px 16px;text-align:center}
+    border-top:3px solid currentColor;padding:18px 16px;text-align:center}
   .kpi-icon{font-size:22px;margin-bottom:6px}
   .kpi-value{font-size:30px;font-weight:700;line-height:1.1}
   .kpi-label{font-size:11px;color:var(--muted);margin-top:6px;
@@ -62,6 +62,38 @@
   .chart-container{position:relative;height:340px;padding:8px 0}
   .report-footer{text-align:center;padding:20px;font-size:11px;
     color:var(--muted);border-top:1px solid var(--divider)}
+
+  /* ── Responsive: tablet (≤900px) ─────────────────────────────────────── */
+  @media(max-width:900px){
+    .container{padding:20px 16px}
+    .report-header{padding:20px 20px 16px;flex-direction:column;align-items:flex-start;gap:10px}
+    .report-meta{text-align:left;white-space:normal}
+    .kpi-grid{grid-template-columns:repeat(3,1fr);gap:12px;padding:16px}
+    .kpi-value{font-size:24px}
+    .section-header{padding:12px 16px}
+    .section-body{padding:16px}
+    .chart-container{height:280px}
+    thead th,td{padding:8px 10px}
+    /* wide classification table: allow horizontal scroll */
+    .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  }
+  /* ── Responsive: mobile (≤600px) ──────────────────────────────────────── */
+  @media(max-width:600px){
+    .container{padding:12px 10px}
+    .report-header{padding:16px 14px 12px}
+    .report-header h1{font-size:15px}
+    .kpi-grid{grid-template-columns:repeat(2,1fr);gap:10px;padding:12px}
+    .kpi-icon{font-size:18px}
+    .kpi-value{font-size:20px}
+    .kpi-label{font-size:10px}
+    .kpi-card{padding:14px 10px}
+    .section-header h2{font-size:13px}
+    .badge{font-size:10px}
+    table{font-size:11px}
+    thead th,td{padding:6px 8px}
+    .chart-container{height:220px}
+    .report-footer{font-size:10px;padding:14px}
+  }
   @media print{body{background:white}.section{box-shadow:none;break-inside:avoid}}
 </style>
 </head>
@@ -77,7 +109,7 @@
 <div class="container">
 
   <div class="section">
-    <div class="section-header"><h2>Executive Summary</h2><span class="badge">8 KPIs</span></div>
+    <div class="section-header"><h2>Executive Summary</h2><span class="badge">10 KPIs</span></div>
     <div class="kpi-grid">
   <div class="kpi-card" style="border-top:4px solid #01696f">
     <div class="kpi-icon">📋</div>
@@ -114,9 +146,9 @@
     <div class="kpi-value" style="color:#7a39bb">11,470</div>
     <div class="kpi-label">Eligible under G.O-1</div>
   </div>
-  <div class="kpi-card" style="border-top:4px solid #964219">
+  <div class="kpi-card" style="border-top:4px solid #bb653b">
     <div class="kpi-icon">📌</div>
-    <div class="kpi-value" style="color:#964219">5,312</div>
+    <div class="kpi-value" style="color:#bb653b">5,312</div>
     <div class="kpi-label">Eligible under G.O-2</div>
   </div>
   <div class="kpi-card" style="border-top:4px solid #a12c7b">
@@ -137,17 +169,17 @@
       <span class="badge">Registrations &amp; Serviced</span>
     </div>
     <div class="section-body" style="padding:0">
-      <table>
+      <div class="table-scroll"><table>
         <thead>
           <tr><th rowspan="2" style="text-align:left">Company</th>
               <th colspan="2">GBA</th><th colspan="2">RLB</th><th colspan="2">ULB</th><th colspan="2">Grand Total</th></tr>
           <tr class="sub-header"><th>Reg</th><th>Svc</th><th>Reg</th><th>Svc</th><th>Reg</th><th>Svc</th><th>Reg</th><th>Svc</th></tr>
         </thead>
-        <tbody><tr><td class="co-name">BESCOM</td><td class="num">6778</td><td class="num svc">250</td><td class="num">3479</td><td class="num svc">456</td><td class="num">1827</td><td class="num svc">318</td><td class="num total-reg">12084</td><td class="num total-svc">1024</td></tr><tr><td class="co-name">CESCOM</td><td class="num">0</td><td class="num svc">0</td><td class="num">6</td><td class="num svc">0</td><td class="num">871</td><td class="num svc">372</td><td class="num total-reg">877</td><td class="num total-svc">372</td></tr><tr><td class="co-name">GESCOM</td><td class="num">0</td><td class="num svc">0</td><td class="num">4414</td><td class="num svc">4166</td><td class="num">2306</td><td class="num svc">1319</td><td class="num total-reg">6720</td><td class="num total-svc">5485</td></tr><tr><td class="co-name">HESCOM</td><td class="num">0</td><td class="num svc">0</td><td class="num">3592</td><td class="num svc">3243</td><td class="num">3046</td><td class="num svc">2113</td><td class="num total-reg">6638</td><td class="num total-svc">5356</td></tr><tr><td class="co-name">MESCOM</td><td class="num">0</td><td class="num svc">0</td><td class="num">5146</td><td class="num svc">4530</td><td class="num">3236</td><td class="num svc">2264</td><td class="num total-reg">8382</td><td class="num total-svc">6794</td></tr></tbody>
-        <tfoot><tr><td>Total</td><td class="num total-reg">6778</td><td class="num total-svc">250</td><td class="num total-reg">16637</td><td class="num total-svc">12395</td><td class="num total-reg">11286</td><td class="num total-svc">6386</td>
-          <td class="num">34701</td>
+        <tbody><tr><td class="co-name">BESCOM</td><td class="num">5819</td><td class="num svc">250</td><td class="num">2894</td><td class="num svc">456</td><td class="num">1326</td><td class="num svc">318</td><td class="num total-reg">10039</td><td class="num total-svc">1024</td></tr><tr><td class="co-name">CESCOM</td><td class="num">0</td><td class="num svc">0</td><td class="num">6</td><td class="num svc">0</td><td class="num">395</td><td class="num svc">372</td><td class="num total-reg">401</td><td class="num total-svc">372</td></tr><tr><td class="co-name">GESCOM</td><td class="num">0</td><td class="num svc">0</td><td class="num">118</td><td class="num svc">4166</td><td class="num">913</td><td class="num svc">1319</td><td class="num total-reg">1031</td><td class="num total-svc">5485</td></tr><tr><td class="co-name">HESCOM</td><td class="num">0</td><td class="num svc">0</td><td class="num">158</td><td class="num svc">3243</td><td class="num">696</td><td class="num svc">2113</td><td class="num total-reg">854</td><td class="num total-svc">5356</td></tr><tr><td class="co-name">MESCOM</td><td class="num">0</td><td class="num svc">0</td><td class="num">290</td><td class="num svc">4530</td><td class="num">925</td><td class="num svc">2264</td><td class="num total-reg">1215</td><td class="num total-svc">6794</td></tr></tbody>
+        <tfoot><tr><td>Total</td><td class="num total-reg">5819</td><td class="num total-svc">250</td><td class="num total-reg">3466</td><td class="num total-svc">12395</td><td class="num total-reg">4255</td><td class="num total-svc">6386</td>
+          <td class="num">13540</td>
           <td class="num total-svc">19031</td></tr></tfoot>
-      </table>
+      </table></div>
     </div>
   </div>
 
@@ -157,42 +189,60 @@
       <span class="badge">predicted_flag</span>
     </div>
     <div class="section-body" style="padding:0">
-      <table>
+      <div class="table-scroll"><table>
         <thead><tr><th style="text-align:left">Company</th>
-          <th>Serviced under G.O-1</th><th>Serviced under G.O-2</th><th>Probably Serviced with OC</th><th>Total</th></tr></thead>
+          <th>Svc G.O-1</th><th>Svc G.O-2</th><th>Prob. Svc OC</th>
+          <th>Elig G.O-1</th><th>Elig G.O-2</th>
+          <th>New Reg Pending</th><th>Old Reg Pending</th>
+          <th>Violation</th><th>Total</th></tr></thead>
         <tbody><tr>
-    <td class="co-name">BESCOM</td>
-    <td class="num go1">810</td><td class="num go2">89</td>
-    <td class="num soc">125</td>
-    <td class="num total-reg">1024</td>
-  </tr><tr>
-    <td class="co-name">CESCOM</td>
-    <td class="num go1">283</td><td class="num go2">73</td>
-    <td class="num soc">16</td>
-    <td class="num total-reg">372</td>
-  </tr><tr>
-    <td class="co-name">GESCOM</td>
-    <td class="num go1">2689</td><td class="num go2">31</td>
-    <td class="num soc">2765</td>
-    <td class="num total-reg">5485</td>
-  </tr><tr>
-    <td class="co-name">HESCOM</td>
-    <td class="num go1">2592</td><td class="num go2">152</td>
-    <td class="num soc">2612</td>
-    <td class="num total-reg">5356</td>
-  </tr><tr>
-    <td class="co-name">MESCOM</td>
-    <td class="num go1">2014</td><td class="num go2">43</td>
-    <td class="num soc">4737</td>
-    <td class="num total-reg">6794</td>
-  </tr></tbody>
+<td class="co-name">BESCOM</td>
+<td class="num go1">810</td><td class="num go2">89</td><td class="num soc">125</td>
+<td class="num">8871</td><td class="num">4800</td>
+<td class="num">257</td><td class="num">0</td>
+<td class="num warn">1190</td>
+<td class="num total-reg">16142</td>
+</tr><tr>
+<td class="co-name">CESCOM</td>
+<td class="num go1">283</td><td class="num go2">73</td><td class="num soc">16</td>
+<td class="num">340</td><td class="num">61</td>
+<td class="num">0</td><td class="num">0</td>
+<td class="num warn">104</td>
+<td class="num total-reg">877</td>
+</tr><tr>
+<td class="co-name">GESCOM</td>
+<td class="num go1">2689</td><td class="num go2">31</td><td class="num soc">2765</td>
+<td class="num">804</td><td class="num">226</td>
+<td class="num">1</td><td class="num">0</td>
+<td class="num warn">204</td>
+<td class="num total-reg">6720</td>
+</tr><tr>
+<td class="co-name">HESCOM</td>
+<td class="num go1">2592</td><td class="num go2">152</td><td class="num soc">2612</td>
+<td class="num">536</td><td class="num">161</td>
+<td class="num">157</td><td class="num">0</td>
+<td class="num warn">428</td>
+<td class="num total-reg">6638</td>
+</tr><tr>
+<td class="co-name">MESCOM</td>
+<td class="num go1">2014</td><td class="num go2">43</td><td class="num soc">4737</td>
+<td class="num">919</td><td class="num">64</td>
+<td class="num">232</td><td class="num">0</td>
+<td class="num warn">373</td>
+<td class="num total-reg">8382</td>
+</tr></tbody>
         <tfoot><tr><td>Total</td>
           <td class="num go1">8388</td>
           <td class="num go2">388</td>
           <td class="num soc">10255</td>
-          <td class="num total-reg">19031</td>
+          <td class="num">11470</td>
+          <td class="num">5312</td>
+          <td class="num">647</td>
+          <td class="num">0</td>
+          <td class="num warn">2299</td>
+          <td class="num total-reg">38759</td>
         </tr></tfoot>
-      </table>
+      </table></div>
     </div>
     <div class="section-body">
       <div class="chart-container">
@@ -207,7 +257,7 @@
       <span class="badge">additional_flags</span>
     </div>
     <div class="section-body" style="padding:0">
-      <table>
+      <div class="table-scroll"><table>
         <thead><tr><th style="text-align:left">Company</th>
           <th>Total Flagged</th><th>Invalid Floors</th>
           <th>Invalid Plot Area</th><th>Flag Rate</th></tr></thead>
@@ -248,7 +298,7 @@
           <td class="num warn">26825</td>
           <td class="num">71.3%</td>
         </tr></tfoot>
-      </table>
+      </table></div>
     </div>
   </div>
 
@@ -266,7 +316,7 @@
 
 </div>
 <div class="report-footer">
-  Generated by generateReport_v1.js &nbsp;|&nbsp; 28 June 2026 &nbsp;|&nbsp;
+  Generated by generateReport_v3.js &nbsp;|&nbsp; 28 June 2026 &nbsp;|&nbsp;
   Details of Applications Registered and installations serviced as per G.O (05.06.2026)
 </div>
 <script>
