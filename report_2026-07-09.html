@@ -266,14 +266,28 @@ function computeSet(rowsIn){
 
 // ---------------- TABLE 1: COMPANY -> REGION SPLIT ----------------
 // Column order: Registered / Intimation Issued / Serviced
+// FIX: rows whose rt doesn't match GBA/RLB/ULB used to vanish from the per-region
+// columns while still being counted in the company/grand Total column, so the
+// three region columns didn't sum to Total. We now detect such rows once for the
+// whole (filtered) dataset and, ONLY if they exist, add a 4th "Unspecified" region
+// column that captures them - otherwise the table renders exactly as before.
 function buildCoRegTable(rows){
   const companies = sortedUniq(rows.map(r=>r.co));
   if(!companies.length) return '<p style="padding:14px;color:var(--muted)">No records for current filters</p>';
 
+  const hasUnspecifiedRegion = rows.some(r => REGIONS.indexOf(r.rt) === -1);
+  const DISPLAY_REGIONS = hasUnspecifiedRegion ? REGIONS.concat(['Unspecified']) : REGIONS;
+
+  function regionRows(rowsIn, rt){
+    return rt === 'Unspecified'
+      ? rowsIn.filter(r => REGIONS.indexOf(r.rt) === -1)
+      : rowsIn.filter(r => r.rt === rt);
+  }
+
   const body = companies.map(co => {
     const coRows = rows.filter(r=>r.co===co);
-    const cells = REGIONS.map(rt => {
-      const c = computeSet(coRows.filter(r=>r.rt===rt));
+    const cells = DISPLAY_REGIONS.map(rt => {
+      const c = computeSet(regionRows(coRows, rt));
       return '<td class="num total-reg">'+num(c.reg)+'</td><td class="num warn">'+num(c.intim)+'</td><td class="num svc">'+num(c.serv)+'</td>';
     }).join('');
     const cTotal = computeSet(coRows);
@@ -281,11 +295,11 @@ function buildCoRegTable(rows){
       '<td class="num total-reg">'+num(cTotal.reg)+'</td><td class="num warn">'+num(cTotal.intim)+'</td><td class="num svc">'+num(cTotal.serv)+'</td></tr>';
   }).join('');
 
-  const rHeads = REGIONS.map(rt => '<th colspan="3">'+esc(rt)+'</th>').join('');
-  const rSubs = REGIONS.map(()=> '<th>Registered</th><th>Intimation Issued</th><th>Serviced</th>').join('');
+  const rHeads = DISPLAY_REGIONS.map(rt => '<th colspan="3">'+esc(rt)+'</th>').join('');
+  const rSubs = DISPLAY_REGIONS.map(()=> '<th>Registered</th><th>Intimation Issued</th><th>Serviced</th>').join('');
 
-  const totalCellsByRegion = REGIONS.map(rt => {
-    const c = computeSet(rows.filter(r=>r.rt===rt));
+  const totalCellsByRegion = DISPLAY_REGIONS.map(rt => {
+    const c = computeSet(regionRows(rows, rt));
     return '<td class="num">'+num(c.reg)+'</td><td class="num">'+num(c.intim)+'</td><td class="num">'+num(c.serv)+'</td>';
   }).join('');
 
@@ -299,8 +313,54 @@ function buildCoRegTable(rows){
 }
 
 // ---------------- TABLE 2: COMPANY -> DISTRICT -> REGION SPLIT ----------------
-// Column order: Registered / Intimation Issued / Serviced. GO Scheme now comes from global filter (rows are pre-filtered).
-function buildDistrictTable(rows){if(!rows.length)return'<p style="padding:14px;color:var(--muted)">No G.O-eligible records for this selection</p>';const companies=sortedUniq(rows.map(r=>r.co));const bodyRows=[];companies.forEach(co=>{const coRows=rows.filter(r=>r.co===co);const districts=sortedUniq(coRows.map(r=>r.dis));districts.forEach((d,idx)=>{const dRows=coRows.filter(r=>r.dis===d);const cells=REGIONS.map(rt=>{const c=computeSet(dRows.filter(r=>r.rt===rt));return'<td class="num total-reg">'+num(c.reg)+'</td><td class="num warn">'+num(c.intim)+'</td><td class="num svc">'+num(c.serv)+'</td>';}).join('');const cTotal=computeSet(dRows);const coCell=idx===0?'<td class="co-merged" rowspan="'+districts.length+'">'+esc(co)+'</td>':'';bodyRows.push('<tr>'+coCell+'<td class="co-name">'+esc(d||'(Unspecified)')+'</td>'+cells+'<td class="num total-reg">'+num(cTotal.reg)+'</td><td class="num warn">'+num(cTotal.intim)+'</td><td class="num svc">'+num(cTotal.serv)+'</td></tr>');});});const rHeads=REGIONS.map(rt=>'<th colspan="3">'+esc(rt)+'</th>').join('');const rSubs=REGIONS.map(()=>'<th>Registered</th><th>Intimation Issued</th><th>Serviced</th>').join('');const totalCellsByRegion=REGIONS.map(rt=>{const c=computeSet(rows.filter(r=>r.rt===rt));return'<td class="num">'+num(c.reg)+'</td><td class="num">'+num(c.intim)+'</td><td class="num">'+num(c.serv)+'</td>';}).join('');const cGrand=computeSet(rows);return'<table><thead><tr><th rowspan="2">Company</th><th rowspan="2">District</th>'+rHeads+'<th colspan="3">Total</th></tr>'+'<tr class="sub-header">'+rSubs+'<th>Registered</th><th>Intimation Issued</th><th>Serviced</th></tr></thead>'+'<tbody>'+bodyRows.join('')+'</tbody>'+'<tfoot><tr><td colspan="2">Grand Total</td>'+totalCellsByRegion+'<td class="num">'+num(cGrand.reg)+'</td><td class="num">'+num(cGrand.intim)+'</td><td class="num">'+num(cGrand.serv)+'</td></tr></tfoot></table>';}
+// Column order: Registered / Intimation Issued / Serviced. GO Scheme comes from global filter (rows are pre-filtered).
+// FIX: sortedUniq's .filter(Boolean) used to silently drop rows with a blank/missing
+// district from the district list entirely - they never appeared in any rendered
+// row, yet still counted toward company/grand totals. Blank/missing districts are
+// now grouped into a single visible "Unspecified" district row per company instead
+// of being dropped, so every rendered row still sums to the company/grand totals.
+function buildDistrictTable(rows){
+  if(!rows.length) return '<p style="padding:14px;color:var(--muted)">No G.O-eligible records for this selection</p>';
+
+  const distKey = r => (r.dis && r.dis.trim()) ? r.dis : '__UNSPEC__';
+
+  const companies = sortedUniq(rows.map(r=>r.co));
+  const bodyRows = [];
+
+  companies.forEach(co => {
+    const coRows = rows.filter(r=>r.co===co);
+    const districts = sortedUniq(coRows.map(distKey));
+    districts.sort((a,b) => (a==='__UNSPEC__') - (b==='__UNSPEC__') || a.localeCompare(b));
+
+    districts.forEach((d, idx) => {
+      const dRows = coRows.filter(r => distKey(r)===d);
+      const cells = REGIONS.map(rt => {
+        const c = computeSet(dRows.filter(r=>r.rt===rt));
+        return '<td class="num total-reg">'+num(c.reg)+'</td><td class="num warn">'+num(c.intim)+'</td><td class="num svc">'+num(c.serv)+'</td>';
+      }).join('');
+      const cTotal = computeSet(dRows);
+      const coCell = idx===0 ? '<td class="co-merged" rowspan="'+districts.length+'">'+esc(co)+'</td>' : '';
+      const label = d==='__UNSPEC__' ? 'Unspecified' : d;
+      bodyRows.push('<tr>'+coCell+'<td class="co-name">'+esc(label)+'</td>'+cells+
+        '<td class="num total-reg">'+num(cTotal.reg)+'</td><td class="num warn">'+num(cTotal.intim)+'</td><td class="num svc">'+num(cTotal.serv)+'</td></tr>');
+    });
+  });
+
+  const rHeads = REGIONS.map(rt => '<th colspan="3">'+esc(rt)+'</th>').join('');
+  const rSubs = REGIONS.map(()=> '<th>Registered</th><th>Intimation Issued</th><th>Serviced</th>').join('');
+  const totalCellsByRegion = REGIONS.map(rt => {
+    const c = computeSet(rows.filter(r=>r.rt===rt));
+    return '<td class="num">'+num(c.reg)+'</td><td class="num">'+num(c.intim)+'</td><td class="num">'+num(c.serv)+'</td>';
+  }).join('');
+  const cGrand = computeSet(rows);
+
+  return '<table><thead><tr><th rowspan="2">Company</th><th rowspan="2">District</th>'+rHeads+'<th colspan="3">Total</th></tr>'+
+    '<tr class="sub-header">'+rSubs+'<th>Registered</th><th>Intimation Issued</th><th>Serviced</th></tr></thead>'+
+    '<tbody>'+bodyRows.join('')+'</tbody>'+
+    '<tfoot><tr><td colspan="2">Grand Total</td>'+totalCellsByRegion+
+    '<td class="num">'+num(cGrand.reg)+'</td><td class="num">'+num(cGrand.intim)+'</td><td class="num">'+num(cGrand.serv)+'</td></tr></tfoot></table>';
+}
+
 // ---------------- SHARED EXCEL EXPORT ----------------
 function exportTableToExcel(tableId, filenamePrefix, titleLabel){
   const el = document.getElementById(tableId);
