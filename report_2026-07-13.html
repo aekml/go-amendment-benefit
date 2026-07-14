@@ -261,7 +261,7 @@ function computeSet(rowsIn){
   const regOnly = rowsIn.filter(isRegisteredOnly).length;
   const intimOnly = rowsIn.filter(r => isIntimated(r) && !isServiced(r)).length;
   const serv = rowsIn.filter(isServiced).length;
-  return { reg: regOnly, intim: intimOnly, serv: serv };
+  return { reg: regOnly+serv, intim: intimOnly+serv, serv: serv };
 }
 
 // ---------------- TABLE 1: COMPANY -> REGION SPLIT ----------------
@@ -319,10 +319,24 @@ function buildCoRegTable(rows){
 // row, yet still counted toward company/grand totals. Blank/missing districts are
 // now grouped into a single visible "Unspecified" district row per company instead
 // of being dropped, so every rendered row still sums to the company/grand totals.
+// FIX (#9): rows whose rt doesn't match GBA/RLB/ULB used to vanish from the
+// per-region columns while still being counted in the district/company/grand
+// Total column. Now mirrors buildCoRegTable()'s DISPLAY_REGIONS/regionRows()
+// pattern - an "Unspecified" region column is added automatically, but ONLY
+// when such rows exist.
 function buildDistrictTable(rows){
   if(!rows.length) return '<p style="padding:14px;color:var(--muted)">No G.O-eligible records for this selection</p>';
 
   const distKey = r => (r.dis && r.dis.trim()) ? r.dis : '__UNSPEC__';
+
+  const hasUnspecifiedRegion = rows.some(r => REGIONS.indexOf(r.rt) === -1);
+  const DISPLAY_REGIONS = hasUnspecifiedRegion ? REGIONS.concat(['Unspecified']) : REGIONS;
+
+  function regionRows(rowsIn, rt){
+    return rt === 'Unspecified'
+      ? rowsIn.filter(r => REGIONS.indexOf(r.rt) === -1)
+      : rowsIn.filter(r => r.rt === rt);
+  }
 
   const companies = sortedUniq(rows.map(r=>r.co));
   const bodyRows = [];
@@ -334,8 +348,8 @@ function buildDistrictTable(rows){
 
     districts.forEach((d, idx) => {
       const dRows = coRows.filter(r => distKey(r)===d);
-      const cells = REGIONS.map(rt => {
-        const c = computeSet(dRows.filter(r=>r.rt===rt));
+      const cells = DISPLAY_REGIONS.map(rt => {
+        const c = computeSet(regionRows(dRows, rt));
         return '<td class="num total-reg">'+num(c.reg)+'</td><td class="num warn">'+num(c.intim)+'</td><td class="num svc">'+num(c.serv)+'</td>';
       }).join('');
       const cTotal = computeSet(dRows);
@@ -346,10 +360,10 @@ function buildDistrictTable(rows){
     });
   });
 
-  const rHeads = REGIONS.map(rt => '<th colspan="3">'+esc(rt)+'</th>').join('');
-  const rSubs = REGIONS.map(()=> '<th>Registered</th><th>Intimation Issued</th><th>Serviced</th>').join('');
-  const totalCellsByRegion = REGIONS.map(rt => {
-    const c = computeSet(rows.filter(r=>r.rt===rt));
+  const rHeads = DISPLAY_REGIONS.map(rt => '<th colspan="3">'+esc(rt)+'</th>').join('');
+  const rSubs = DISPLAY_REGIONS.map(()=> '<th>Registered</th><th>Intimation Issued</th><th>Serviced</th>').join('');
+  const totalCellsByRegion = DISPLAY_REGIONS.map(rt => {
+    const c = computeSet(regionRows(rows, rt));
     return '<td class="num">'+num(c.reg)+'</td><td class="num">'+num(c.intim)+'</td><td class="num">'+num(c.serv)+'</td>';
   }).join('');
   const cGrand = computeSet(rows);
