@@ -296,7 +296,7 @@ function buildCoRegTable(rows){
   }).join('');
 
   const rHeads = DISPLAY_REGIONS.map(rt => '<th colspan="3">'+esc(rt)+'</th>').join('');
-  const rSubs = DISPLAY_REGIONS.map(()=> '<th>Registered</th><th>Intimation Issued</th><th>Serviced</th>').join('');
+  const rSubs = DISPLAY_REGIONS.map(()=> '<th>Registered</br>(Premises)</th><th>Intimation Issued</br>(Premises)</th><th>Serviced</br>(Premises)</th>').join('');
 
   const totalCellsByRegion = DISPLAY_REGIONS.map(rt => {
     const c = computeSet(regionRows(rows, rt));
@@ -306,7 +306,7 @@ function buildCoRegTable(rows){
   const cGrand = computeSet(rows);
 
   return '<table id="coRegTableInner"><thead><tr><th rowspan="2">Company</th>'+rHeads+'<th colspan="3">Total</th></tr>'+
-    '<tr class="sub-header">'+rSubs+'<th>Registered</th><th>Intimation Issued</th><th>Serviced</th></tr></thead>'+
+    '<tr class="sub-header">'+rSubs+'<th>Registered</br>(Premises)</th><th>Intimation Issued</br>(Premises)</th><th>Serviced</br>(Premises)</th></tr></thead>'+
     '<tbody>'+body+'</tbody>'+
     '<tfoot><tr><td>Grand Total</td>'+totalCellsByRegion+
     '<td class="num">'+num(cGrand.reg)+'</td><td class="num">'+num(cGrand.intim)+'</td><td class="num">'+num(cGrand.serv)+'</td></tr></tfoot></table>';
@@ -361,7 +361,7 @@ function buildDistrictTable(rows){
   });
 
   const rHeads = DISPLAY_REGIONS.map(rt => '<th colspan="3">'+esc(rt)+'</th>').join('');
-  const rSubs = DISPLAY_REGIONS.map(()=> '<th>Registered</th><th>Intimation Issued</th><th>Serviced</th>').join('');
+  const rSubs = DISPLAY_REGIONS.map(()=> '<th>Registered</br>(Premises)</th><th>Intimation Issued</br>(Premises)</th><th>Serviced(</br>Premises)</th>').join('');
   const totalCellsByRegion = DISPLAY_REGIONS.map(rt => {
     const c = computeSet(regionRows(rows, rt));
     return '<td class="num">'+num(c.reg)+'</td><td class="num">'+num(c.intim)+'</td><td class="num">'+num(c.serv)+'</td>';
@@ -369,7 +369,7 @@ function buildDistrictTable(rows){
   const cGrand = computeSet(rows);
 
   return '<table><thead><tr><th rowspan="2">Company</th><th rowspan="2">District</th>'+rHeads+'<th colspan="3">Total</th></tr>'+
-    '<tr class="sub-header">'+rSubs+'<th>Registered</th><th>Intimation Issued</th><th>Serviced</th></tr></thead>'+
+    '<tr class="sub-header">'+rSubs+'<th>Registered</br>(Premises)</th><th>Intimation Issued</br>(Premises)</th><th>Serviced</br>(Premises)</th></tr></thead>'+
     '<tbody>'+bodyRows.join('')+'</tbody>'+
     '<tfoot><tr><td colspan="2">Grand Total</td>'+totalCellsByRegion+
     '<td class="num">'+num(cGrand.reg)+'</td><td class="num">'+num(cGrand.intim)+'</td><td class="num">'+num(cGrand.serv)+'</td></tr></tfoot></table>';
