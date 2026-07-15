@@ -361,7 +361,7 @@ function buildDistrictTable(rows){
   });
 
   const rHeads = DISPLAY_REGIONS.map(rt => '<th colspan="3">'+esc(rt)+'</th>').join('');
-  const rSubs = DISPLAY_REGIONS.map(()=> '<th>Registered</br>(Premises)</th><th>Intimation Issued</br>(Premises)</th><th>Serviced(</br>Premises)</th>').join('');
+  const rSubs = DISPLAY_REGIONS.map(()=> '<th>Registered</br>(Premises)</th><th>Intimation Issued</br>(Premises)</th><th>Serviced</br>(Premises)</th>').join('');
   const totalCellsByRegion = DISPLAY_REGIONS.map(rt => {
     const c = computeSet(regionRows(rows, rt));
     return '<td class="num">'+num(c.reg)+'</td><td class="num">'+num(c.intim)+'</td><td class="num">'+num(c.serv)+'</td>';
