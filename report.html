@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GO Compliance - Subset Report</title>
+<style>
+:root{
+  --bg:#f7f6f2; --surface:#f9f8f5; --surface2:#fbfbf9; --surface-offset:#f3f0ec;
+  --divider:#dcd9d5; --border:#d4d1ca;
+  --text:#28251d; --muted:#7a7974; --faint:#bab9b4;
+  --teal:#01696f; --teal-hover:#0c4e54;
+  --warn:#a13544; --blue:#006494;
+  --radius-md:0.5rem; --radius-lg:0.75rem;
+}
+*{box-sizing:border-box;}
+body{font-family:'Segoe UI',Calibri,Arial,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:24px;}
+.container{max-width:1400px;margin:0 auto;}
+h1{font-size:1.6rem;margin-bottom:4px;color:var(--teal);}
+.subtitle{color:var(--muted);margin-bottom:24px;font-size:0.9rem;}
+.section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:24px;overflow:hidden;}
+.section-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--surface-offset);border-bottom:1px solid var(--divider);flex-wrap:wrap;gap:10px;}
+.section-header h2{font-size:1.05rem;margin:0;color:var(--teal);}
+.section-body{padding:18px;}
+.filter-bar{display:flex;flex-wrap:wrap;gap:14px;padding:16px 18px;background:var(--surface2);border-bottom:1px solid var(--divider);}
+.filter-group{display:flex;flex-direction:column;gap:4px;min-width:160px;}
+.filter-group label{font-size:0.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.02em;}
+select, input[type=date]{padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-md);background:#fff;color:var(--text);font-size:0.85rem;}
+.btn-reset{padding:7px 14px;border:1px solid var(--border);border-radius:var(--radius-md);background:#fff;color:var(--text);font-size:0.85rem;cursor:pointer;transition:all .15s;}
+.btn-reset:hover{background:var(--surface-offset);}
+.badge{font-size:0.8rem;color:var(--muted);background:var(--surface-offset);padding:4px 10px;border-radius:999px;}
+.table-scroll{overflow-x:auto;}
+table{border-collapse:collapse;width:100%;font-size:0.85rem;}
+th,td{border:1px solid var(--divider);padding:7px 10px;}
+thead th{background:var(--teal);color:#fff;font-weight:600;text-align:center;position:sticky;top:0;}
+tr.sub-header th{background:#e8f0ef;color:var(--teal);font-weight:600;font-size:0.78rem;}
+td.co-name{font-weight:600;text-align:left;background:var(--surface2);}
+td.num{text-align:right;font-variant-numeric:tabular-nums;}
+td.total-reg{font-weight:600;}
+td.warn{color:var(--warn);font-weight:600;}
+td.svc{color:var(--blue);font-weight:600;}
+td.co-merged{
+  font-weight:600;
+  text-align:center;
+  vertical-align:middle;
+  background:var(--teal);
+  color:#fff;
+}
+tfoot td{background:var(--surface-offset);font-weight:700;border-top:2px solid var(--teal);}
+.summary-line{padding:10px 18px;font-size:0.82rem;color:var(--muted);background:var(--surface2);border-top:1px solid var(--divider);}
+/* v1.4: Complete Classification Breakdown -- 2-level header reuses .sub-header,
+   no new color variables introduced, purely additive styling. */
+#completeTableInner th[colspan]{background:var(--teal-hover);}
+
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>GO Compliance &mdash; Subset Report</h1>
+  <p class="subtitle">Company &rarr; Region Split &nbsp;|&nbsp; Company &rarr; District &rarr; Region Split &nbsp;|&nbsp; Global Filters</p>
+  <div id="dataLoadingBanner" style="padding:14px 18px;background:var(--surface2);border-radius:var(--radius-md);color:var(--muted);margin-bottom:16px;border:1px solid var(--border);">Loading report data&hellip;</div>
+
+  <!-- ============== GLOBAL FILTER BAR ============== -->
+  <div class="section">
+    <div class="section-header"><h2>Filters</h2><span class="badge" id="filterSummary">All records</span></div>
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label>Reg. Date From</label>
+        <input type="date" id="fdatefrom">
+      </div>
+      <div class="filter-group">
+        <label>Reg. Date To</label>
+        <input type="date" id="fdateto">
+      </div>
+      <div class="filter-group">
+        <label>Svc. Date From</label>
+        <input type="date" id="fsvcdatefrom">
+      </div>
+      <div class="filter-group">
+        <label>Svc. Date To</label>
+        <input type="date" id="fsvcdateto">
+      </div>
+      <div class="filter-group">
+        <label>Company</label>
+        <select id="fcompany"><option value="">All Companies</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Zone</label>
+        <select id="fzone"><option value="">All Zones</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Circle</label>
+        <select id="fcircle"><option value="">All Circles</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Division</label>
+        <select id="fdivision"><option value="">All Divisions</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Subdivision</label>
+        <select id="fsubdivision"><option value="">All Subdivisions</option></select>
+      </div>
+      <div class="filter-group">
+        <label>GO Scheme</label>
+        <select id="fgoscheme">
+          <option value="GO12">GO-1+2</option>
+          <option value="GO1">G.O-1</option>
+          <option value="GO2">G.O-2</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>View</label>
+        <select id="fviewmode">
+          <option value="premises">Premises</option>
+          <option value="connections">Connections</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>&nbsp;</label>
+        <button class="btn-reset" id="resetFilters">Reset Filters</button>
+      </div>
+    </div>
+    <div class="summary-line" id="summaryLine">Showing all records.</div>
+  </div>
+
+  <!-- ============== COMPANY -> REGION SPLIT ============== -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Company &rarr; Region Split</h2>
+      <button class="btn-reset" id="exportCoRegBtn" style="background:var(--teal);color:#fff;border-color:var(--teal);">Export to Excel</button>
+    </div>
+    <div class="section-body">
+      <div class="table-scroll" id="tblCoReg"></div>
+    </div>
+  </div>
+
+  <!-- ============== COMPANY -> DISTRICT -> REGION SPLIT ============== -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Company &rarr; District &rarr; Region Split</h2>
+      <button class="btn-reset" id="exportDistrictBtn" style="background:var(--teal);color:#fff;border-color:var(--teal);">Export to Excel</button>
+    </div>
+    <div class="section-body">
+      <div class="table-scroll" id="tblDistrict"></div>
+    </div>
+  </div>
+
+  <!-- ============== v1.4: COMPLETE CLASSIFICATION BREAKDOWN (independent of GO Scheme filter) ============== -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Complete Classification Breakdown</h2>
+      <button class="btn-reset" id="exportCompleteBtn" style="background:var(--teal);color:#fff;border-color:var(--teal);">Export to Excel</button>
+    </div>
+    <div class="section-body">
+      <p style="margin:0 0 10px;font-size:0.8rem;color:var(--muted)">Shows all records across both G.O-1 and G.O-2 schemes. Not affected by the GO Scheme filter above.</p>
+      <div class="table-scroll" id="tblComplete"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let ALLROWS = []; // v1.5: populated async via fetch before boot(); do not read before load completes
+const REGIONS = ["GBA","RLB","ULB"];
+const DATA_FILE = "report-data.json";
+const DATA_IS_GZIPPED = false;
+
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function num(n){ return (n||0).toLocaleString(); }
+function sortedUniq(arr){ return Array.from(new Set(arr.filter(Boolean))).sort(); }
+
+// v1.4: single counting helper used by all table builders. 'premises' mode
+// (default) preserves EXACT pre-v1.4 behavior (plain row count). 'connections'
+// mode sums childAccountCount across the given rows instead.
+function countRows(rowsIn, mode){
+  if(mode === 'connections') return rowsIn.reduce((sum,r) => sum + (r.cac||0), 0);
+  return rowsIn.length;
+}
+function parseDMY(s){
+  if(!s) return null;
+  const t = s.trim();
+  let m = t.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if(m) return new Date(m[3]+'-'+m[2]+'-'+m[1]);
+  m = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m) return new Date(t);
+  return null;
+}
+
+// ---------------- GO SCHEME MATCHING (NOW GLOBAL) ----------------
+function matchesGoScheme(pf, scheme){
+  pf = pf || '';
+  if(scheme==='GO1') return pf.indexOf('G.O-1')!==-1;
+  if(scheme==='GO2') return pf.indexOf('G.O-2')!==-1;
+  return pf.indexOf('G.O-1')!==-1 || pf.indexOf('G.O-2')!==-1;
+}
+
+// ---------------- SELECT HELPERS ----------------
+// FIX: explicit forceValue param so rebuilding options can force-clear selection
+// instead of always re-selecting whatever was previously chosen.
+function setOpts(id, opts, ph, forceValue){
+  const s = document.getElementById(id);
+  if(!s) return;
+  const cur = (forceValue !== undefined) ? forceValue : s.value;
+  s.innerHTML = '<option value="">'+ph+'</option>' +
+    opts.map(o => '<option value="'+esc(o)+'"'+(o===cur?' selected':'')+'>'+esc(o)+'</option>').join('');
+  s.value = cur && opts.indexOf(cur) !== -1 ? cur : '';
+}
+
+// ---------------- CASCADING GEO FILTER STATE ----------------
+function geoFilt(upTo){
+  return ALLROWS.filter(r => {
+    const co = document.getElementById('fcompany').value;
+    const zon = document.getElementById('fzone').value;
+    const cir = document.getElementById('fcircle').value;
+    const div = document.getElementById('fdivision').value;
+    if(upTo>=1 && co && r.co!==co) return false;
+    if(upTo>=2 && zon && r.zon!==zon) return false;
+    if(upTo>=3 && cir && r.cir!==cir) return false;
+    if(upTo>=4 && div && r.div!==div) return false;
+    return true;
+  });
+}
+
+function onCo(){
+  setOpts('fzone', sortedUniq(geoFilt(1).map(r=>r.zon)), 'All Zones', '');
+  setOpts('fcircle', [], 'All Circles', '');
+  setOpts('fdivision', [], 'All Divisions', '');
+  setOpts('fsubdivision', [], 'All Subdivisions', '');
+  applyFilters();
+}
+function onZon(){
+  setOpts('fcircle', sortedUniq(geoFilt(2).map(r=>r.cir)), 'All Circles', '');
+  setOpts('fdivision', [], 'All Divisions', '');
+  setOpts('fsubdivision', [], 'All Subdivisions', '');
+  applyFilters();
+}
+function onCir(){
+  setOpts('fdivision', sortedUniq(geoFilt(3).map(r=>r.div)), 'All Divisions', '');
+  setOpts('fsubdivision', [], 'All Subdivisions', '');
+  applyFilters();
+}
+function onDiv(){
+  setOpts('fsubdivision', sortedUniq(geoFilt(4).map(r=>r.sub)), 'All Subdivisions', '');
+  applyFilters();
+}
+
+function getFiltered(){
+  const co = document.getElementById('fcompany').value;
+  const zon = document.getElementById('fzone').value;
+  const cir = document.getElementById('fcircle').value;
+  const div = document.getElementById('fdivision').value;
+  const sub = document.getElementById('fsubdivision').value;
+  const dfrom = document.getElementById('fdatefrom').value;
+  const dto = document.getElementById('fdateto').value;
+  const scheme = document.getElementById('fgoscheme').value;
+
+  return ALLROWS.filter(r => {
+    if(co && r.co!==co) return false;
+    if(zon && r.zon!==zon) return false;
+    if(cir && r.cir!==cir) return false;
+    if(div && r.div!==div) return false;
+    if(sub && r.sub!==sub) return false;
+    if(!matchesGoScheme(r.pf, scheme)) return false;
+    if(dfrom || dto){
+      const rd = parseDMY(r.dor);
+      if(!rd) return false;
+      if(dfrom && rd < new Date(dfrom)) return false;
+      if(dto && rd > new Date(dto)) return false;
+    }
+    return true;
+  });
+}
+
+// v1.4: same geo/reg-date filters as getFiltered(), but deliberately SKIPS
+// the GO Scheme check -- used only by buildCompleteTable() so that table
+// always reflects records across BOTH schemes regardless of the global
+// GO Scheme dropdown selection.
+function getFilteredNoScheme(){
+  const co = document.getElementById('fcompany').value;
+  const zon = document.getElementById('fzone').value;
+  const cir = document.getElementById('fcircle').value;
+  const div = document.getElementById('fdivision').value;
+  const sub = document.getElementById('fsubdivision').value;
+  const dfrom = document.getElementById('fdatefrom').value;
+  const dto = document.getElementById('fdateto').value;
+
+  return ALLROWS.filter(r => {
+    if(co && r.co!==co) return false;
+    if(zon && r.zon!==zon) return false;
+    if(cir && r.cir!==cir) return false;
+    if(div && r.div!==div) return false;
+    if(sub && r.sub!==sub) return false;
+    if(dfrom || dto){
+      const rd = parseDMY(r.dor);
+      if(!rd) return false;
+      if(dfrom && rd < new Date(dfrom)) return false;
+      if(dto && rd > new Date(dto)) return false;
+    }
+    return true;
+  });
+}
+
+function buildSummary(rows, svcFrom, svcTo){
+  const parts = [];
+  const co = document.getElementById('fcompany').value;
+  const zon = document.getElementById('fzone').value;
+  const cir = document.getElementById('fcircle').value;
+  const div = document.getElementById('fdivision').value;
+  const sub = document.getElementById('fsubdivision').value;
+  const dfrom = document.getElementById('fdatefrom').value;
+  const dto = document.getElementById('fdateto').value;
+  const scheme = document.getElementById('fgoscheme').value;
+  const schemeLabel = scheme==='GO1' ? 'G.O-1' : (scheme==='GO2' ? 'G.O-2' : 'GO-1+2');
+  parts.push('GO Scheme: '+schemeLabel);
+  if(co) parts.push('Company: '+co);
+  if(zon) parts.push('Zone: '+zon);
+  if(cir) parts.push('Circle: '+cir);
+  if(div) parts.push('Division: '+div);
+  if(sub) parts.push('Subdivision: '+sub);
+  if(dfrom) parts.push('Reg From: '+dfrom);
+  if(dto) parts.push('Reg To: '+dto);
+  if(svcFrom) parts.push('Svc From: '+svcFrom);
+  if(svcTo) parts.push('Svc To: '+svcTo);
+  document.getElementById('summaryLine').textContent =
+    parts.join(' | ') + ' | ' + num(rows.length) + ' records shown.';
+  document.getElementById('filterSummary').textContent = parts.length+' filter(s) active';
+}
+
+// ---------------- SHARED FLAG LOGIC ----------------
+function isIntimated(r){ return r.af && r.af.indexOf('Intimation Issued')!==-1; }
+function isServiced(r){ return r.pf==='Serviced under G.O-1' || r.pf==='Serviced under G.O-2'; }
+function isRegisteredOnly(r){ return r.pf==='Registered under G.O-1' || r.pf==='Registered under G.O-2'; }
+
+// ---------------- v1.4: COMPLETE CLASSIFICATION BREAKDOWN CATEGORIES ----------------
+// 7 mutually-exclusive categories mirroring the classifier's predicted_flag
+// vocabulary, split into two parent groups: No Service Date vs Service Date
+// Present. Any row not matching one of the 7 falls into "Unclassified"
+// (blank/null pf) so every row is always accounted for exactly once.
+function isRegG1Both(r){ return r.pf==='Registered under G.O-1'; }
+function isRegG2Only(r){ return r.pf==='Registered under G.O-2'; }
+function isRegPending(r){ return r.pf==='Old Registration & Service Pending' || r.pf==='New Registration & Service Pending'; }
+function isPlotFloorViolation(r){ return r.pf==='Plot area / Floor Violation'; }
+function isServicedG1(r){ return r.pf==='Serviced under G.O-1'; }
+function isServicedG2(r){ return r.pf==='Serviced under G.O-2'; }
+function isServicedIneligible(r){ return r.pf==='Probably Serviced with OC'; }
+function isUnclassified(r){
+  return !isRegG1Both(r) && !isRegG2Only(r) && !isRegPending(r) && !isPlotFloorViolation(r) &&
+         !isServicedG1(r) && !isServicedG2(r) && !isServicedIneligible(r);
+}
+
+// v1.3: Service-date range check used ONLY to narrow the Serviced count.
+// Classifier invariant: a row is never flagged Serviced with a blank
+// dateOfService, so !sd on a serviced row is a data anomaly, not a normal
+// path -- excluded from the ranged count and logged, never fabricated.
+function inSvcRange(r, svcFrom, svcTo){
+  if(!svcFrom && !svcTo) return true;
+  const sd = parseDMY(r.dos);
+  if(!sd){
+    console.warn('WARN: serviced row with unparseable dateOfService — co='+r.co+' sub='+r.sub+' dos="'+r.dos+'"');
+    return false;
+  }
+  if(svcFrom && sd < new Date(svcFrom)) return false;
+  if(svcTo && sd > new Date(svcTo)) return false;
+  return true;
+}
+
+// Registered = RegisteredOnly + Serviced ; Intimation = IntimationOnly(not already serviced) + Serviced
+// v1.3: Registered/Intimation totals ALWAYS include the full serviced set
+// regardless of svcFrom/svcTo. Only the Serviced count itself narrows to
+// the selected service-date range -- this is the cascaded-filter behavior.
+// v1.4: mode param added ('premises' default | 'connections'). All counts now
+// route through countRows() instead of raw .length, so passing mode='premises'
+// (or omitting it) reproduces the EXACT pre-v1.4 numbers unchanged.
+function computeSet(rowsIn, svcFrom, svcTo, mode){
+  const regOnlyRows = rowsIn.filter(isRegisteredOnly);
+  const allServiced = rowsIn.filter(isServiced);
+  const intimOnlyRows = rowsIn.filter(r => isIntimated(r) && !isServiced(r));
+  const servRows = allServiced.filter(r => inSvcRange(r, svcFrom, svcTo));
+  const regOnly = countRows(regOnlyRows, mode);
+  const servicedCount = countRows(allServiced, mode);
+  const intimOnly = countRows(intimOnlyRows, mode);
+  const serv = countRows(servRows, mode);
+  return { reg: regOnly+servicedCount, intim: intimOnly+servicedCount, serv: serv };
+}
+
+// ---------------- TABLE 1: COMPANY -> REGION SPLIT ----------------
+// Column order: Registered / Intimation Issued / Serviced
+// Rows whose rt doesn't match GBA/RLB/ULB used to vanish from the per-region
+// columns while still being counted in the company/grand Total column, so the
+// three region columns didn't sum to Total. We detect such rows once for the
+// whole (filtered) dataset and, ONLY if they exist, add a 4th "Unspecified" region
+// column that captures them - otherwise the table renders exactly as v1.2.
+// v1.4: mode param added ('premises' default | 'connections'), threaded into
+// every computeSet() call. Column sub-header label now reflects active mode
+// instead of a hardcoded "(Premises)" string.
+function buildCoRegTable(rows, svcFrom, svcTo, mode){
+  const companies = sortedUniq(rows.map(r=>r.co));
+  if(!companies.length) return '<p style="padding:14px;color:var(--muted)">No records for current filters</p>';
+
+  const unitLabel = mode === 'connections' ? 'Connections' : 'Premises';
+  const hasUnspecifiedRegion = rows.some(r => REGIONS.indexOf(r.rt) === -1);
+  const DISPLAY_REGIONS = hasUnspecifiedRegion ? REGIONS.concat(['Unspecified']) : REGIONS;
+
+  function regionRows(rowsIn, rt){
+    return rt === 'Unspecified'
+      ? rowsIn.filter(r => REGIONS.indexOf(r.rt) === -1)
+      : rowsIn.filter(r => r.rt === rt);
+  }
+
+  const body = companies.map(co => {
+    const coRows = rows.filter(r=>r.co===co);
+    const cells = DISPLAY_REGIONS.map(rt => {
+      const c = computeSet(regionRows(coRows, rt), svcFrom, svcTo, mode);
+      return '<td class="num total-reg">'+num(c.reg)+'</td><td class="num warn">'+num(c.intim)+'</td><td class="num svc">'+num(c.serv)+'</td>';
+    }).join('');
+    const cTotal = computeSet(coRows, svcFrom, svcTo, mode);
+    return '<tr><td class="co-name">'+esc(co)+'</td>'+cells+
+      '<td class="num total-reg">'+num(cTotal.reg)+'</td><td class="num warn">'+num(cTotal.intim)+'</td><td class="num svc">'+num(cTotal.serv)+'</td></tr>';
+  }).join('');
+
+  const rHeads = DISPLAY_REGIONS.map(rt => '<th colspan="3">'+esc(rt)+'</th>').join('');
+  const rSubs = DISPLAY_REGIONS.map(()=> '<th>Registered</br>('+unitLabel+')</th><th>Intimation Issued</br>('+unitLabel+')</th><th>Serviced</br>('+unitLabel+')</th>').join('');
+
+  const totalCellsByRegion = DISPLAY_REGIONS.map(rt => {
+    const c = computeSet(regionRows(rows, rt), svcFrom, svcTo, mode);
+    return '<td class="num">'+num(c.reg)+'</td><td class="num">'+num(c.intim)+'</td><td class="num">'+num(c.serv)+'</td>';
+  }).join('');
+
+  const cGrand = computeSet(rows, svcFrom, svcTo, mode);
+
+  return '<table id="coRegTableInner"><thead><tr><th rowspan="2">Company</th>'+rHeads+'<th colspan="3">Total</th></tr>'+
+    '<tr class="sub-header">'+rSubs+'<th>Registered</br>('+unitLabel+')</th><th>Intimation Issued</br>('+unitLabel+')</th><th>Serviced</br>('+unitLabel+')</th></tr></thead>'+
+    '<tbody>'+body+'</tbody>'+
+    '<tfoot><tr><td>Grand Total</td>'+totalCellsByRegion+
+    '<td class="num">'+num(cGrand.reg)+'</td><td class="num">'+num(cGrand.intim)+'</td><td class="num">'+num(cGrand.serv)+'</td></tr></tfoot></table>';
+}
+
+// ---------------- TABLE 2: COMPANY -> DISTRICT -> REGION SPLIT ----------------
+// Column order: Registered / Intimation Issued / Serviced. GO Scheme comes from global filter (rows are pre-filtered).
+// Rows with a blank/missing district are grouped into a single visible
+// "Unspecified" district row per company (sorted last), so every rendered
+// row still sums to the company/grand totals. Mirrors buildCoRegTable()'s
+// DISPLAY_REGIONS/regionRows() pattern for the Unspecified region column too.
+// v1.4: mode param added ('premises' default | 'connections'), threaded into
+// every computeSet() call. Column sub-header label reflects active mode.
+function buildDistrictTable(rows, svcFrom, svcTo, mode){
+  if(!rows.length) return '<p style="padding:14px;color:var(--muted)">No G.O-eligible records for this selection</p>';
+
+  const unitLabel = mode === 'connections' ? 'Connections' : 'Premises';
+  const distKey = r => (r.dis && r.dis.trim()) ? r.dis : '__UNSPEC__';
+
+  const hasUnspecifiedRegion = rows.some(r => REGIONS.indexOf(r.rt) === -1);
+  const DISPLAY_REGIONS = hasUnspecifiedRegion ? REGIONS.concat(['Unspecified']) : REGIONS;
+
+  function regionRows(rowsIn, rt){
+    return rt === 'Unspecified'
+      ? rowsIn.filter(r => REGIONS.indexOf(r.rt) === -1)
+      : rowsIn.filter(r => r.rt === rt);
+  }
+
+  const companies = sortedUniq(rows.map(r=>r.co));
+  const bodyRows = [];
+
+  companies.forEach(co => {
+    const coRows = rows.filter(r=>r.co===co);
+    const districts = sortedUniq(coRows.map(distKey));
+    districts.sort((a,b) => (a==='__UNSPEC__') - (b==='__UNSPEC__') || a.localeCompare(b));
+
+    districts.forEach((d, idx) => {
+      const dRows = coRows.filter(r => distKey(r)===d);
+      const cells = DISPLAY_REGIONS.map(rt => {
+        const c = computeSet(regionRows(dRows, rt), svcFrom, svcTo, mode);
+        return '<td class="num total-reg">'+num(c.reg)+'</td><td class="num warn">'+num(c.intim)+'</td><td class="num svc">'+num(c.serv)+'</td>';
+      }).join('');
+      const cTotal = computeSet(dRows, svcFrom, svcTo, mode);
+      const coCell = idx===0 ? '<td class="co-merged" rowspan="'+districts.length+'">'+esc(co)+'</td>' : '';
+      const label = d==='__UNSPEC__' ? 'Unspecified' : d;
+      bodyRows.push('<tr>'+coCell+'<td class="co-name">'+esc(label)+'</td>'+cells+
+        '<td class="num total-reg">'+num(cTotal.reg)+'</td><td class="num warn">'+num(cTotal.intim)+'</td><td class="num svc">'+num(cTotal.serv)+'</td></tr>');
+    });
+  });
+
+  const rHeads = DISPLAY_REGIONS.map(rt => '<th colspan="3">'+esc(rt)+'</th>').join('');
+  const rSubs = DISPLAY_REGIONS.map(()=> '<th>Registered</br>('+unitLabel+')</th><th>Intimation Issued</br>('+unitLabel+')</th><th>Serviced</br>('+unitLabel+')</th>').join('');
+  const totalCellsByRegion = DISPLAY_REGIONS.map(rt => {
+    const c = computeSet(regionRows(rows, rt), svcFrom, svcTo, mode);
+    return '<td class="num">'+num(c.reg)+'</td><td class="num">'+num(c.intim)+'</td><td class="num">'+num(c.serv)+'</td>';
+  }).join('');
+  const cGrand = computeSet(rows, svcFrom, svcTo, mode);
+
+  return '<table><thead><tr><th rowspan="2">Company</th><th rowspan="2">District</th>'+rHeads+'<th colspan="3">Total</th></tr>'+
+    '<tr class="sub-header">'+rSubs+'<th>Registered</br>('+unitLabel+')</th><th>Intimation Issued</br>('+unitLabel+')</th><th>Serviced</br>('+unitLabel+')</th></tr></thead>'+
+    '<tbody>'+bodyRows.join('')+'</tbody>'+
+    '<tfoot><tr><td colspan="2">Grand Total</td>'+totalCellsByRegion+
+    '<td class="num">'+num(cGrand.reg)+'</td><td class="num">'+num(cGrand.intim)+'</td><td class="num">'+num(cGrand.serv)+'</td></tr></tfoot></table>';
+}
+
+// ---------------- v1.4: COMPLETE CLASSIFICATION BREAKDOWN TABLE ----------------
+// Shows ALL rows (independent of the GO Scheme filter) split by service-date
+// presence, then by scheme eligibility. Two parent header groups:
+// "No Service Date" (4 sub-columns) and "Service Date Present" (3 sub-columns),
+// plus an "Unclassified" column and a Grand Total column. This table is NOT
+// filtered by the global GO Scheme dropdown -- it always reflects both schemes.
+const COMPLETE_CATEGORIES = [
+  { key: 'regG1',      label: 'Registered under G.O-1', group: 'nosd', test: isRegG1Both },
+  { key: 'regG2',      label: 'Registered under G.O-2',            group: 'nosd', test: isRegG2Only },
+  { key: 'regPending', label: 'Neither G.O-1 nor G.O-2 Registrations', group: 'nosd', test: isRegPending },
+  { key: 'plotFloor',  label: 'Plot area / Floor Violation',                    group: 'nosd', test: isPlotFloorViolation },
+  { key: 'svcG1',      label: 'Serviced under G.O-1',                    group: 'sd',   test: isServicedG1 },
+  { key: 'svcG2',      label: 'Serviced under G.O-2',                    group: 'sd',   test: isServicedG2 },
+  { key: 'svcIneligible', label: 'Serviced, not eligible (either schemes)', group: 'sd', test: isServicedIneligible },
+  { key: 'unclassified', label: 'Unclassified',                          group: 'other', test: isUnclassified }
+];
+
+// v1.4: mode param added, same convention as computeSet(). mode='premises'
+// (default) reproduces exact pre-v1.4 counts.
+function computeCompleteCounts(rowsIn, mode){
+  const counts = {};
+  COMPLETE_CATEGORIES.forEach(c => { counts[c.key] = countRows(rowsIn.filter(c.test), mode); });
+  counts.total = countRows(rowsIn, mode);
+  return counts;
+}
+
+// v1.4: mode param added, threaded into computeCompleteCounts(). Table
+// caption row shows active unit label for clarity.
+function buildCompleteTable(rows, mode){
+  const companies = sortedUniq(rows.map(r=>r.co));
+  if(!companies.length) return '<p style="padding:14px;color:var(--muted)">No records for current filters</p>';
+
+  const unitLabel = mode === 'connections' ? 'Connections' : 'Premises';
+  const nosdCats = COMPLETE_CATEGORIES.filter(c => c.group === 'nosd');
+  const sdCats = COMPLETE_CATEGORIES.filter(c => c.group === 'sd');
+  const otherCats = COMPLETE_CATEGORIES.filter(c => c.group === 'other');
+
+  const body = companies.map(co => {
+    const coRows = rows.filter(r=>r.co===co);
+    const c = computeCompleteCounts(coRows, mode);
+    const cells = COMPLETE_CATEGORIES.map(cat => '<td class="num">'+num(c[cat.key])+'</td>').join('');
+    return '<tr><td class="co-name">'+esc(co)+'</td>'+cells+'<td class="num total-reg">'+num(c.total)+'</td></tr>';
+  }).join('');
+
+  const cGrand = computeCompleteCounts(rows, mode);
+  const grandCells = COMPLETE_CATEGORIES.map(cat => '<td class="num">'+num(cGrand[cat.key])+'</td>').join('');
+
+  const rHead = '<th colspan="'+nosdCats.length+'">Registrations</th>'+
+    '<th colspan="'+sdCats.length+'">Serviced Records</th>'+
+    '<th colspan="'+otherCats.length+'">Other</th>';
+  const rSubs = COMPLETE_CATEGORIES.map(cat => '<th>'+esc(cat.label)+'</th>').join('');
+
+  return '<p style="margin:0 0 8px;font-size:0.78rem;color:var(--muted)">Counts shown as: <strong>'+unitLabel+'</strong></p>'+
+    '<table id="completeTableInner"><thead>'+
+    '<tr><th rowspan="2">Company</th>'+rHead+'<th rowspan="2">Total</th></tr>'+
+    '<tr class="sub-header">'+rSubs+'</tr></thead>'+
+    '<tbody>'+body+'</tbody>'+
+    '<tfoot><tr><td>Grand Total</td>'+grandCells+'<td class="num">'+num(cGrand.total)+'</td></tr></tfoot></table>';
+}
+
+// ---------------- SHARED EXCEL EXPORT ----------------
+function exportTableToExcel(tableId, filenamePrefix, titleLabel){
+  const el = document.getElementById(tableId);
+  if(!el){ alert('Table not found.'); return; }
+  const tableHtml = el.innerHTML;
+
+  const styleBlock =
+    'table{border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:12px;}'+
+    'th,td{border:1px solid #d4d1ca;padding:6px 10px;}'+
+    'thead th{background:#01696f;color:#ffffff;font-weight:bold;text-align:center;}'+
+    '.sub-header th{background:#e8f0ef;color:#01696f;font-weight:bold;}'+
+    'td.co-name{font-weight:bold;text-align:left;}'+
+	'td.co-merged{font-weight:bold;text-align:center;vertical-align:middle;background:#01696f;color:#ffffff;}'+
+    'td.num{text-align:right;mso-number-format:"0";}'+
+    'td.total-reg{font-weight:bold;}'+
+    'td.warn{color:#a13544;font-weight:bold;}'+
+    'td.svc{color:#006494;font-weight:bold;}'+
+    'tfoot td{background:#f0f4f3;font-weight:bold;border-top:2px solid #01696f;}';
+
+  const excelHtml =
+    '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'+
+    '<head><meta charset="UTF-8">'+
+    '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>'+
+    '<x:Name>'+filenamePrefix+'</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>'+
+    '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'+
+    '<style>'+styleBlock+'</style></head><body>'+
+    '<h3 style="font-family:Calibri;color:#01696f;">'+esc(titleLabel)+'</h3>'+
+    '<table>'+tableHtml+'</table></body></html>';
+
+  const blob = new Blob(['\ufeff'+excelHtml], { type: 'application/vnd.ms-excel' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  const stamp = new Date().toISOString().slice(0,10);
+  link.download = filenamePrefix.replace(/\s+/g,'_') + '_' + stamp + '.xls';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// ---------------- APPLY / INIT ----------------
+function applyFilters(){
+  const rows = getFiltered();
+  const svcFrom = document.getElementById('fsvcdatefrom').value;
+  const svcTo = document.getElementById('fsvcdateto').value;
+  // v1.4: view mode (Premises default | Connections) read from new dropdown,
+  // threaded into every table builder below.
+  const viewMode = document.getElementById('fviewmode').value;
+  document.getElementById('tblCoReg').innerHTML = buildCoRegTable(rows, svcFrom, svcTo, viewMode);
+  document.getElementById('tblDistrict').innerHTML = buildDistrictTable(rows, svcFrom, svcTo, viewMode);
+  buildSummary(rows, svcFrom, svcTo);
+
+  // v1.4: Complete Classification Breakdown uses geo/reg-date filters only
+  // (getFilteredNoScheme) -- intentionally bypasses the GO Scheme dropdown.
+  const rowsNoScheme = getFilteredNoScheme();
+  document.getElementById('tblComplete').innerHTML = buildCompleteTable(rowsNoScheme, viewMode);
+}
+
+function initCascade(){
+  setOpts('fcompany', sortedUniq(ALLROWS.map(r=>r.co)), 'All Companies', '');
+  setOpts('fzone', sortedUniq(ALLROWS.map(r=>r.zon)), 'All Zones', '');
+  setOpts('fcircle', sortedUniq(ALLROWS.map(r=>r.cir)), 'All Circles', '');
+  setOpts('fdivision', sortedUniq(ALLROWS.map(r=>r.div)), 'All Divisions', '');
+  setOpts('fsubdivision', sortedUniq(ALLROWS.map(r=>r.sub)), 'All Subdivisions', '');
+
+  document.getElementById('fcompany').addEventListener('change', onCo);
+  document.getElementById('fzone').addEventListener('change', onZon);
+  document.getElementById('fcircle').addEventListener('change', onCir);
+  document.getElementById('fdivision').addEventListener('change', onDiv);
+  document.getElementById('fsubdivision').addEventListener('change', applyFilters);
+  document.getElementById('fdatefrom').addEventListener('change', applyFilters);
+  document.getElementById('fdateto').addEventListener('change', applyFilters);
+  document.getElementById('fsvcdatefrom').addEventListener('change', applyFilters);
+  document.getElementById('fsvcdateto').addEventListener('change', applyFilters);
+  document.getElementById('fgoscheme').addEventListener('change', applyFilters);
+  document.getElementById('fviewmode').addEventListener('change', applyFilters); // v1.4
+
+  // FIX: Reset now force-clears every select's value (not just visually rebuilding options)
+  document.getElementById('resetFilters').addEventListener('click', function(){
+    document.getElementById('fdatefrom').value='';
+    document.getElementById('fdateto').value='';
+    document.getElementById('fsvcdatefrom').value='';
+    document.getElementById('fsvcdateto').value='';
+    document.getElementById('fgoscheme').value='GO12';
+    document.getElementById('fviewmode').value='premises'; // v1.4
+    setOpts('fcompany', sortedUniq(ALLROWS.map(r=>r.co)), 'All Companies', '');
+    setOpts('fzone', sortedUniq(ALLROWS.map(r=>r.zon)), 'All Zones', '');
+    setOpts('fcircle', sortedUniq(ALLROWS.map(r=>r.cir)), 'All Circles', '');
+    setOpts('fdivision', sortedUniq(ALLROWS.map(r=>r.div)), 'All Divisions', '');
+    setOpts('fsubdivision', sortedUniq(ALLROWS.map(r=>r.sub)), 'All Subdivisions', '');
+    applyFilters();
+  });
+
+  document.getElementById('exportCoRegBtn').addEventListener('click', function(){
+    const scheme = document.getElementById('fgoscheme').value;
+    const schemeLabel = scheme==='GO1' ? 'G.O-1' : (scheme==='GO2' ? 'G.O-2' : 'GO-1+2');
+    const viewLabel = document.getElementById('fviewmode').value === 'connections' ? 'Connections' : 'Premises'; // v1.4
+    exportTableToExcel('tblCoReg', 'CompanyRegionSplit_'+schemeLabel+'_'+viewLabel, 'Company to Region Split ('+schemeLabel+', '+viewLabel+') - Registered/Intimation/Serviced');
+  });
+
+  document.getElementById('exportDistrictBtn').addEventListener('click', function(){
+    const co = document.getElementById('fcompany').value;
+    const scheme = document.getElementById('fgoscheme').value;
+    const schemeLabel = scheme==='GO1' ? 'G.O-1' : (scheme==='GO2' ? 'G.O-2' : 'GO-1+2');
+    const viewLabel = document.getElementById('fviewmode').value === 'connections' ? 'Connections' : 'Premises'; // v1.4
+    const label = (co ? co : 'All_Companies') + '_' + schemeLabel + '_' + viewLabel + '_District_Split';
+    exportTableToExcel('tblDistrict', label, (co ? co : 'All Companies') + ' \u2014 ' + schemeLabel + ' \u2014 ' + viewLabel + ' \u2014 District Split');
+  });
+
+  // v1.4: Complete Classification Breakdown export -- independent of GO Scheme label
+  document.getElementById('exportCompleteBtn').addEventListener('click', function(){
+    const viewLabel = document.getElementById('fviewmode').value === 'connections' ? 'Connections' : 'Premises'; // v1.4
+    exportTableToExcel('tblComplete', 'CompleteClassificationBreakdown_'+viewLabel, 'Complete Classification Breakdown (All Records, Both Schemes, '+viewLabel+')');
+  });
+
+  applyFilters();
+}
+
+// v1.5: async bootstrap -- fetch the external data file (optionally
+// gzip-decoded via DecompressionStream) before running initCascade/
+// applyFilters, both of which read ALLROWS. No fallback for browsers
+// without DecompressionStream support (evergreen browsers assumed).
+async function loadData(){
+  const resp = await fetch(DATA_FILE);
+  if(!resp.ok) throw new Error('Failed to load'+ DATA_FILE +':'+ resp.status);
+  if(DATA_IS_GZIPPED && typeof DecompressionStream !== 'undefined'){
+    const ds = new DecompressionStream('gzip');
+    const decompressed = resp.body.pipeThrough(ds);
+    const text = await new Response(decompressed).text();
+    return JSON.parse(text);
+  }
+  return resp.json();
+}
+
+async function boot(){
+  const loadingEl = document.getElementById('dataLoadingBanner');
+  try {
+    ALLROWS = await loadData();
+    if(loadingEl) loadingEl.remove();
+    initCascade();
+    applyFilters();
+  } catch(err){
+    console.error('Failed to load report data:', err);
+    if(loadingEl) loadingEl.textContent = 'Failed to load report data: ' + err.message;
+  }
+}
+boot();
+</script>
+</body>
+</html>
